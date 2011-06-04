@@ -5,7 +5,7 @@
  * @package mamur
  * @subpackage config
  * @version 105
- * @mvc setup
+ * @mvc model
  * @release Mamur 1.10
  * @svntag 105
  * @author Martin Marsh <martinmarsh@sygenius.com>
@@ -46,7 +46,7 @@
 
 /**
  * The class provides a single point of reference to get all configuration details
- * Configuration is set up in index.php, bootstrap and the main configuration file configuration.xml
+ * Configuration is set up in index.php, the main configuration file configuration.xml
  * The bootstrap is responsible for setting up this config class by calling the method processConfig
  * Configuration details can then be read directly by getting the appropriate data class
  * and using the magic __get methods to get the appropriate variables; for further
@@ -75,12 +75,17 @@ class mamurConfig{
 	/**
 	 * processConfig saves configuration setup in index.php and bootstrap
 	 * then reads configuration.xml file for the main setup variables
-	 * @param $mamurPageConfig - settings made during start up not used after this call
+	 * Each data group is handled by a mamurConfigData class which makes it
+	 * easy to use settings when required since the class instance can be 
+	 * obtained by a call to this class eg
+	 * $set =mamurConfig::get('settings'); //gets globals data
+	 * print $set->server; 
+	 * @param $mamurPageConfig - settings made during start up and added to the settings data class
 	 * @return void
 	 */
   	public static function  processConfig($mamurPageConfig){
 	  	
-	  	//set start time
+	  	//set start time used to get an idea of processing speed
 	  	$mamurPageConfig['time_start'] = ((float)$mamurPageConfig['start_usec']+ (float)$mamurPageConfig['start_sec']);
 	  	//read configuration
 	  	self::$xmlConfigfile="{$mamurPageConfig['user']}/configuration.xml";
@@ -95,7 +100,8 @@ class mamurConfig{
 	        
 	            
 	        	/**
-	        	 * read globals
+	        	 * read globals (Strings which may appear in content) into a
+	        	 * in mamurConfigData class object stored in self::$data['globals']
 	        	 */
 	          
 	        	$configArray=array();  
@@ -108,16 +114,22 @@ class mamurConfig{
 	                    }
 	            	}
 	        	}
-	        	
-	         
 	        	self::$data['globals']=new mamurConfigData($configArray);
-	        
+	        	
+	        	
+	        	/**
+	        	 * read controllers XML settings and save in an 
+	        	 * mamurConfigData class saved in self::$data['globals']
+	        	 */
 	        	$configArray=array();  
 	        	self::getGroupAndElementData('controllers','controller',$configArray);
 	        	self::$data['controllers']=new mamurConfigData($configArray);
 	        
 	        
-	        
+	             /**
+	        	 * read controllers XML settings and save in $data
+	        	 * in mamurConfigData class saved in self::$data['globals']
+	        	 */
 	        	$configArray=array();
 	        	self::getGroupAndElementData('plugins','plugin',$configArray);
 	            self::$data['plugins']=new mamurConfigData($configArray);

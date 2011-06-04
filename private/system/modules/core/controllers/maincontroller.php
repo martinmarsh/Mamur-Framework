@@ -115,6 +115,9 @@ class mamurMainController{
 	public static function processUri(){
 		$set=mamurConfig::get('settings');
 		
+		$control=mamurConfig::get('controller');
+			@trigger_error("TRACE trace ");
+			
 		//find appropriate controller to dispatch to
 		$controllerToUse="mamurMainController";
 		$controllers=mamurConfig::get('controllers');
@@ -124,15 +127,38 @@ class mamurMainController{
 				break;
 			}
 		}
+	
+		@trigger_error("TRACE matched $controllerToUse");
 		
-		print "****matched $controllerToUse ****";
+	    $classes=mamurConfig::get('classes');
+		foreach($classes->getAll() as $name=>$class){
+		/*	$x=$class;['type'] =>
+'system'
+['module'] =>
+'core'
+['mvc'] =>
+'controllers'
+['load'] =>
+'onstart'
+['file'] =>
+['classType'] =>
+'static'*/
+			
+			
+		}
+		
+		@trigger_error("***** classes {$classes->mamurController['type']} ");
+	
+	
 		
 		if(!isset($_COOKIE["locid"]) && $set->allowPermCookie=='yes' ){
         	//$this->model->setLocidCookie();
-        	print "cookies allowed";
+        	
+        	trigger_error("TRACE cookies allowed");
     	}else{
-    		print "cookies not allowed $set->allowPermCookie {$_COOKIE['locid']}";
+    	
         	//$this->model->confirmLocid($_COOKIE["locid"]);
+        	trigger_error("TRACE cookies not allowed $set->allowPermCookie {$_COOKIE['locid']}");
    		}
    		//see if another controller is required
    			
