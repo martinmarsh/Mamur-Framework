@@ -23,6 +23,7 @@
 	 <!-- set debug trace to log a trace of varaiables and backtrack on user error  -->
 	 <set debugTrace="Yes"/>
 	  <!-- ******** Important you must set firePhp to NO on production sites-->
+	     firePhp lets you see error message via fireBug console and you can use
 	 <set firePhp="yes" />
 
      <!-- default home page  -->
