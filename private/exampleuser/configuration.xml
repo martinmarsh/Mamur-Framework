@@ -89,7 +89,7 @@
 <!-- order is important first http request to full fill match will invoke that controller -->
   <controllers>
   	  <controller name="mamurAdminController" match="@\/admin\/.*?@"/>
-  	  <controller name="mamurMainController" match="@.*@"/>	
+  	  <controller name="mamurController" match="@.*@"/>	
   </controllers>
   
   <!-- example of future plugin config  -->

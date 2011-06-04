@@ -84,7 +84,7 @@ Martin Marsh        - Architect, designer and coder for version 1
  * @package mamur
  * @subpackage core
  */
-class mamurMainController{
+class mamurController{
 	//the controller processes the url request and causes the url to print
 	//There can be more than one instance of an mvc set can be created.
 	//An editor might create one for example. On page load one MVC is always set
@@ -130,35 +130,15 @@ class mamurMainController{
 	
 		@trigger_error("TRACE matched $controllerToUse");
 		
-	    $classes=mamurConfig::get('classes');
-		foreach($classes->getAll() as $name=>$class){
-		/*	$x=$class;['type'] =>
-'system'
-['module'] =>
-'core'
-['mvc'] =>
-'controllers'
-['load'] =>
-'onstart'
-['file'] =>
-['classType'] =>
-'static'*/
-			
-			
-		}
-		
-		@trigger_error("***** classes {$classes->mamurController['type']} ");
-	
-	
 		
 		if(!isset($_COOKIE["locid"]) && $set->allowPermCookie=='yes' ){
         	//$this->model->setLocidCookie();
         	
-        	trigger_error("TRACE cookies allowed");
+        	trigger_error("cookies allowed");
     	}else{
     	
         	//$this->model->confirmLocid($_COOKIE["locid"]);
-        	trigger_error("TRACE cookies not allowed $set->allowPermCookie {$_COOKIE['locid']}");
+        	trigger_error("cookies not allowed $set->allowPermCookie {$_COOKIE['locid']}");
    		}
    		//see if another controller is required
    			
