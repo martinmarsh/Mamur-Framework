@@ -7,41 +7,13 @@
  * @version 105
  * @mvc model
  * @release Mamur 1.10
- * @svntag 105
+ * @releasetag 105
  * @author Martin Marsh <martinmarsh@sygenius.com>
  * @copyright Copyright (c) 2011,Sygenius Ltd  
  * @license http://www.gnu.org/licenses GNU Public License, version 3
  *                   
  *  					          
  */ 
-/*
-  Licence:
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, version 3 of the License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-  	General enquires email:  martinmarsh@mamur.org
-  	Licence enquires email:  martinmarsh@sygenius.com
-  	
-  	Copyright (c) 2011 Sygenius Ltd 
-
-
- File Version: 105  compatible with versions V1.04+
- History:     Detailed history - Major Events
- 100   09/12/2010 - First alpha version
- 102   01/01/2011 - First beta candidate for trial in building live web sites
- 103   02/02/2011 - Plugin loading
- 106   10/04/2011 - Controllers,classes and Placeholders - version 1.10          
-
-*******************************************************************************/
 
 
 /**
@@ -66,12 +38,25 @@ class mamurConfig{
 	
 	private static $xmlConfigfile,$configXML;
 	
-	
-	public function __construct(){
-		print here;
-		
-	}
-	
+	// Hold an instance of the class
+    private static $instance;
+    
+    // A private constructor; prevents direct creation of object
+    private function __construct() 
+    {
+    }
+    
+    // The singleton method
+    public static function getInstance() 
+    {
+        if (!isset(self::$instance)) {
+            $c = __CLASS__;
+            self::$instance = new $c;
+        }
+
+        return self::$instance;
+    }
+
 	/**
 	 * processConfig saves configuration setup in index.php and bootstrap
 	 * then reads configuration.xml file for the main setup variables
@@ -83,20 +68,20 @@ class mamurConfig{
 	 * @param $mamurPageConfig - settings made during start up and added to the settings data class
 	 * @return void
 	 */
-  	public static function  processConfig($mamurPageConfig){
+  	public function  processConfig($mamurPageConfig){
 	  	
+	    self::$data['settings']=$mamurPageConfig;
 	  	//set start time used to get an idea of processing speed
-	  	$mamurPageConfig['time_start'] = ((float)$mamurPageConfig['start_usec']+ (float)$mamurPageConfig['start_sec']);
+	  	self::$data['settings']->time_start= ((float)self::$data['settings']->start_usec+ (float)self::$data['settings']->start_sec);
 	  	//read configuration
-	  	self::$xmlConfigfile="{$mamurPageConfig['user']}/configuration.xml";
+	  	self::$xmlConfigfile=self::$data['settings']->user."/configuration.xml";
 	    $rewriteXml=false;
 	  	if(file_exists(self::$xmlConfigfile)){
 	  		
 	  		self::$configXML = new DOMDocument();
 	        if(self::$configXML->load(self::$xmlConfigfile)){
-	        	$configArray=array(); 
 	        	
-	        	self::getGroupAndElementData('settings','set',$mamurPageConfig,false);
+	        	self::getGroupAndElementData('settings','set','settings',false);
 	        
 	            
 	        	/**
@@ -104,38 +89,35 @@ class mamurConfig{
 	        	 * in mamurConfigData class object stored in self::$data['globals']
 	        	 */
 	          
-	        	$configArray=array();  
+	        	self::$data['globals']=new mamurConfigData();
 	            $globalsLists=self::$configXML->getElementsByTagName('globals');
 	            foreach( $globalsLists as $globalsListing){
 	            	$globalList=$globalsListing->getElementsByTagName('global');
 	 				foreach($globalList as $eTag){
 	                	if($eTag->hasAttribute('name') ){
-	                    	$configArray[$eTag->getAttribute('name')]= $eTag->nodeValue;
+	                		$attrName=$eTag->getAttribute('name');
+	                    	self::$data['globals']->$attrName= $eTag->nodeValue;
 	                    }
 	            	}
 	        	}
-	        	self::$data['globals']=new mamurConfigData($configArray);
+	        	
 	        	
 	        	
 	        	/**
 	        	 * read controllers XML settings and save in an 
 	        	 * mamurConfigData class saved in self::$data['globals']
 	        	 */
-	        	$configArray=array();  
-	        	self::getGroupAndElementData('controllers','controller',$configArray);
-	        	self::$data['controllers']=new mamurConfigData($configArray);
-	        
-	        
+	        	self::$data['controllers']=new mamurConfigData();
+	        	self::getGroupAndElementData('controllers','controller','controllers');
+	     
 	             /**
 	        	 * read controllers XML settings and save in $data
 	        	 * in mamurConfigData class saved in self::$data['globals']
 	        	 */
-	        	$configArray=array();
-	        	self::getGroupAndElementData('plugins','plugin',$configArray);
-	            self::$data['plugins']=new mamurConfigData($configArray);
-	          
-	              
-	            $configArray=array();  
+	        	self::$data['plugins']=new mamurConfigData();
+	        	self::getGroupAndElementData('plugins','plugin','plugins');
+	            
+	            self::$data['classes']=new mamurConfigData();
 	            $classesLists=self::$configXML->getElementsByTagName('classes');
 	            foreach($classesLists as $typeslist){
 	            	$types=$typeslist->getElementsByTagName('type');
@@ -154,11 +136,6 @@ class mamurConfig{
 							            	foreach($classList as $class){	
 							            		$className=$class->getAttribute('name');	
 							            		
-							            		$classType="";
-							                	if($class->hasAttribute('type')) {
-							                		$classType=$class->getAttribute('type');
-							                	}
-							                	
 							            	    $load="";
 							                	if($class->hasAttribute('load')) {
 							                		$load=$class->getAttribute('load');
@@ -168,17 +145,40 @@ class mamurConfig{
 							                	if($class->hasAttribute('file')) {
 							                		$file=$class->getAttribute('file');
 							                	}
-							                	
-							                	$configArray[$className]=array(
-	                        							'type' => $typeName,
-	                           							'module' => $moduleName,
-	                            						'mvc' => $mvcName,
-							                			'load' => $load,
-							                	        'file' => $file,
-	                            						'classType' => $classType
-	                        					);
-							                	
-							                	
+							                	if($mvcName=='mvc'){
+							                	   $mvcArray=array('controllers','models','views');
+							                	}else{
+							                	   $mvcArray=array($mvcName);
+							                	}
+							                	foreach($mvcArray as $useMVC){
+							                		$nameArray=array();
+							                		if(strpos($className,'*')!==false || strpos($className,'?')!==false){	
+   	   													$find=self::$data['settings']->$typeName."/modules/{$moduleName}/{$useMVC}/$className.php";
+   	   													foreach (glob($find) as $filename) {
+    														$nameArray[]=basename($filename,'.php');
+														}
+														
+							                		}else{
+							                			if($mvcName=='mvc'){
+							                				$ext=ucfirst(substr($useMVC,0,-1));
+							                				$nameArray=array($className.$ext);ucfirst(substr($useMVC,0,-1));
+							                			}else{
+							                				$nameArray=array($className);
+							                			}
+							                		}
+							                		
+								                	foreach($nameArray as $useClassName){
+								                		//mvc type creates a controller, model, and view
+								                		$classInfo=new mamurConfigData();
+								                		$classInfo->type=$typeName;
+								                		$classInfo->module= $moduleName;
+								                		$classInfo->mvc = $useMVC;
+									                	$classInfo->load = $load;   								                		 
+														self::$data['classes']->$useClassName=$classInfo;
+									                	
+								            		}
+							            		}
+							               	    
 							            	}
 							        	}
 							        }
@@ -186,22 +186,20 @@ class mamurConfig{
 	            		}
 	              	}
 	           }
-	      
-
-	           self::$data['classes']=new mamurConfigData($configArray);
+	    
 	          
-			   $configArray=array();  
-	           self::getGroupAndElementData('placeholders','placeholder',$configArray);
-	           self::$data['placeholders']=new mamurConfigData($configArray);
+	       
+	          
+			   self::$data['placeholders']=new mamurConfigData();  
+	           self::getGroupAndElementData('placeholders','placeholder','placeholders');
+	         
 	              
- 
-	                      
+   
 	            $defaultZone=ini_get('date.timezone');
 	            if(empty($defaultZone)){
 	                   $defaultZone='UTC';
 	            }
-	             //add all config settings to file
-	             self::$data['settings']=new mamurConfigData($mamurPageConfig);
+	          
 	              
 	            //time zone setting
 	            if(!isset(self::$data['settings']->serverTimeZone)){
@@ -238,59 +236,58 @@ class mamurConfig{
 	    }
 	}
 	
-	/**
-	 * This method gets the instance of a named data storage class eg
-	 * $global =mamurConfig::get('globals'); //gets globals data
-	 * print $global->server; prints the server value
-	 * some data classes return arrays so cna use
-	 * $plugin->forms['status'] or $plugin->getAll();
-	 * 
-	 * @param $className - name of data storage eg settings, global, controllers, placeholder,
-	 * @return unknown_type
-	 */
-	public static function get($className){
-		if(isset( self::$data[$className])){
-		   return self::$data[$className];
+    /**
+     * __get magic method allows
+     * $config=mamurConfig::getInstance();
+     * $config->variable and $config->$mayvariable contructs
+     * @param $variable an item (value or array) in the data array 
+     * @return void
+     */
+	public function __get($variable){
+	    if(isset( self::$data[$variable])){
+		   return self::$data[$variable];
 		}else{
-			return false;
+			return null;
 		}
+	
 	}
 	
 	/**
 	 * Sets up typical configuration of Group with Tags containing only attributes
 	 * @param $group - outer containing tag eg settings
 	 * @param $tag   - the inner tag eg set
-	 * @param $setArray - the array to set eg self::$config
+	 * @param $setConfig - the config element
 	 * @param $setByName - uses name attribute value to set array (default) otherwise assumes attribute=value is setting
 	 * @return null
 	 */
 	
-	private static function getGroupAndElementData($group,$tag,&$setArray,$setByName=true){
+	private static function getGroupAndElementData($group,$tag,$setConfig,$setByName=true){
 		$lists=self::$configXML->getElementsByTagName($group);
 		foreach( $lists as $listing){
-			$defaultList=array();
+			$defaultConfigAttributes=new mamurConfigData();
 			if($listing->hasAttributes()){
 				foreach ($listing->attributes as $attrName => $attrNode){
-					$defaultList[$attrName]=$attrNode->value;
-				}
-				
+					$defaultConfigAttributes->$attrName=$attrNode->value;
+				}				
 			}
 	    	$elementList=$listing->getElementsByTagName($tag);
-	        foreach($elementList as $eTag){
+	        foreach($elementList as $eTag){     	   
+	        	$configAttributes=clone $defaultConfigAttributes;
 	        	if($eTag->hasAttributes()) {
 	        		if($setByName){
 	        			if($eTag->hasAttribute('name')){
 	        				$name=$eTag->getAttribute('name');
-	        				$setArray[$name]=$defaultList;
+	        				
 	        		    	foreach ($eTag->attributes as $attrName => $attrNode) {
 	        		    		if($attrName!='name'){
-	        		    			$setArray[$name][$attrName]= $attrNode->value;   
+	        		    			$configAttributes->$attrName= $attrNode->value;   
 	        		    		}
 	        		    	}
+	        		    	self::$data[$setConfig]->$name=$configAttributes;
 	        			}
 	        		}else{
 	            		foreach ($eTag->attributes as $attrName => $attrNode) {
-	                		$setArray[$attrName]= $attrNode->value;    	
+	                		self::$data[$setConfig]->$attrName= $attrNode->value;    	
 	                	}
 	        		}
 	             }
@@ -415,7 +412,7 @@ class mamurConfig{
 	    }
 	    if($name!=''){
 	          
-	           self::$data['settings']->set($name,$value);
+	           self::$data['settings']->$name=$value;
 	           $xpath = new DOMXPath(self::$configXML);
 	           $setList=$xpath->query("/configuration/settings/set[@$name]");
 	           if($setList->length>0){
@@ -455,7 +452,7 @@ class mamurConfig{
 	
 
 	public static function setGlobal($name,$value){
-         self::$data['globals']->set($name,$value);
+         self::$data['globals']->$name=$value;
 	
         $doc=self::$configXML;
         $xpath = new DOMXPath($doc);

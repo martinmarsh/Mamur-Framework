@@ -1,79 +1,40 @@
 <?php
-/******************************************************************************
-@version: 1.04;
-@name: page_model;
-@type: main;
-                    Page Model Classes
-  Mamur Content Server; for Dynamic Serving of Web Pages using Templates
-  File Version: 1.05  Copyright (c) 2011 Sygenius Ltd  Date: 10/04/2011
-
- 1st Released on System tag: 104
-
-  Licence:
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, version 3 of the License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-  General enquires email:  martinmarsh@mamur.org
-  Licence enquires email:  martinmarsh@sygenius.com
-
- Application:
-  Mamur Page Server sits on top of Apache and is easily integrated by adding
- .htaccess to the root directory. When a html\xhtml web page is requested the url
- is passed to this server to produce the page dynamically from templates.
- The website sits in a directory /website. Pages which have _page.xml definition
- will override any existing page by that name and produce the page from templates
- as defined with the xml definition
-
- We use a simple MVC model for this level which might be considered only the
- view of a higher level MVC model.
+/**
+ * This file contains the static main model Class - mamurModel
+ *  Licence:
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, version 3 of the License.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * @name mamurModel
+ * @package mamur
+ * @subpackage core
+ * @version 110
+ * @mvc model
+ * @release Mamur 1.10
+ * @releasetag 110
+ * @author Martin Marsh <martinmarsh@sygenius.com>
+ * @copyright Copyright (c) 2011,Sygenius Ltd  
+ * @license http://www.gnu.org/licenses GNU Public License, version 3
+ *                   
+ *  					          
+ */ 
 
 
- Important:   Requires php 5.2 and .htaccess enabled
+/**
+ * mamurModel is a basic class to access all module related data and files
+ * @package mamur
+ * @subpackage core
+ */
 
-
- Install:     Place this file in url root directory "urlroot"
-              Place web site in urlroot/website
-              Place .htaccess files in /website and install /private directory
-
- Description:
-
-
- Author:      Martin Marsh.
- Notes:
-
-
-Acknowlgedements:
-
-Martin Marsh        - Architect, designer and coder for version 1
-(Sygenius Ltd)        Based on earlier works created for Sygenius Ltd
-
-
- Author:      Martin Marsh.
-
- File Version: 105  compatible with versions V1.04+
- History:     Detailed history - Major Events
- 100   09/12/2010 - First alpha version - based on Sygenius Software used with permission
- 102   01/01/2011 - First beta candidate for trial in building live web sites
- 103/4 02/02/2011 - Improved plugin loading and setup, user base redirection hook
-                    $this->getServerBase() for current content location
-                    registerServerBaseFunction  added.
-                    namedTagCallBack added
- 105   10/04/2011 - Additional functions setDataSetField and getDataSetField           
-
-*******************************************************************************/
-
-
-
-abstract class mamurAbstractPageModel {
+class mamurModel {
    // protected $control;
     //protected $view;
     protected $webBaseDir,$pageURL,$mamurURL;
@@ -88,30 +49,36 @@ abstract class mamurAbstractPageModel {
     protected $locid,$locidAccepted;
     protected $global;
     protected $mamurPluginDir,$mamurBaseDir,$mamurlogDir,$mamurSystemDir;
-    protected $tagCallBack,$namedTagCallBack,$urlCallBack,
+    protected $tagCallBack,$urlCallBack,
             $pageProcessCallBack,$pagePagePrintCallBack,$sessionClearCallBack,
             $serverBaseRequestCallBack;
     protected $datasets,$session,$inSession,$oldSession,$logOutFlag,$tags,$options;
 	protected $lastTableName,$lastDataSetName;
 
-
+/**
+ * Constructor sets up properties according to configuration
+ * On first install Sets apiID and Salt
+ * Manages cookies (if enabled), decrypt stored session cookies, 
+ * logouts and set up user session data
+ * @return void
+ */ 
     public function   __construct(){
-       $config=mamurConfig::$config;
+       $set=mamurConfig::getInstance()->settings;
 
-       $this->defaultPageFile=$config['homePage'];
-       $this->defaultPageExt=$config['pageExt'];
-       $this->webBaseDir=$config['root'];      //Base directory of web site
+       $this->defaultPageFile=$set->homePage;
+       $this->defaultPageExt=$set->pageExt;
+       $this->webBaseDir=$set->root;      //Base directory of web site
 
        //note plugin dir  set by remote call
-       $this->mamurBaseDir=$config['mamur'];
+       $this->mamurBaseDir=$set->mamur;
        $this->mamurURL=str_replace($this->webBaseDir,'', $this->mamurBaseDir);
        if(DIRECTORY_SEPARATOR=='\\'){
         $this->mamurURL=str_replace(DIRECTORY_SEPARATOR ,'/', $this->mamurURL );
        }
-       $this->mamurlogDir=$config['logDir'];
-       $this->mamurSystemDir=$config['system'];
+       $this->mamurlogDir=$set->logDir;
+       $this->mamurSystemDir=$set->system;
        $this->logOutFlag=false;
-       $this->mamurUserDir=$config['user'];
+       $this->mamurUserDir=$set->user;
        $this->xmlPageType=false;
        $this->error404PageName="errornotfound";
        $this->countSerial=0;
@@ -133,11 +100,11 @@ abstract class mamurAbstractPageModel {
        $this->lastTableName='default';
 
        $update=false;
-       if(mamurConfig::$config['salt']=='new'){
+       if($set->salt=='new'){
           $this->setConfig('salt','new');
           $update=true;
        }
-       if(mamurConfig::$config['apiId']=='new'){
+       if($set->apiId=='new'){
            $this->setConfig('apiId',$this->unique_serial());
            $update=true;
        }
@@ -171,11 +138,11 @@ abstract class mamurAbstractPageModel {
        //can be canccelled by a plugin (note plugins have not loaded yet)
 
        }elseif($this->session['user']['loggedin'] &&
-           time()-$this->session['user']['time'] > mamurConfig::$config['loginTimeOut'] ){
+           time()-$this->session['user']['time'] > $set->loginTimeOut ){
            $this->logOutFlag=true;
            $this->session['user']['time']=time();
        }elseif($this->session['user']['loggedin'] &&
-           time()-$this->session['user']['time'] > mamurConfig::$config['loginTimeOut']/3 ){
+           time()-$this->session['user']['time'] >  $set->loginTimeOut/3 ){
            $this->session['user']['time']=time();
        }
        if(!isset($this->session['page'])){
@@ -184,7 +151,11 @@ abstract class mamurAbstractPageModel {
       // print_r($this->session);
     }
 
-
+	/**
+	 * Checks to see if logout required.
+	 * A hook function can modify this method and extend login period
+	 * @return void
+	 */
     public function checkLogOut(){
        if($this->logOutFlag){
           $continue=true;
@@ -199,67 +170,90 @@ abstract class mamurAbstractPageModel {
        }
        $this->logOutFlag=false;
     }
- /*
-   // public function setView(&$view){
-   //      $this->view=$view;
-   // }
 
-   // public function getView(){
-   //      return $this->view;
-   // }
-
-    public function setController(&$control){
-         return $this->control=$control;
-    }
-
-    public function getControl(){
-         return $this->control;
-    }
-      */
-
+    /**
+     * Saves php parameters defined by a php tag
+     * @param $var
+     * @return void
+     */
     public function passParameters($var){
        $this->phpParameters=$var;
     }
     
+    /**
+     * Gets php pass parameters defined by a php tag
+     * @return phpParamters Array
+     */
     public function getParameters(){
     	return $this->phpParameters;
     }
-    public function getPlugins(){
-         return mamurConfig::$plugin;
-    }
-
-
-    public function getConfig(){
-        return mamurConfig::$config;
-     }
-
-    public function getConfigValue($name){
-        if(isset(mamurConfig::$config[$name])){
-            return  mamurConfig::$config[$name];
-        }else{
-            return null;
-        }
-     }
+  
+	/**
+	 * Saves an option
+	 * @param $value - of option
+	 * @param $name - of option
+	 * @return void
+	 */
 
      public function setOption($value,$name=0){
           $this->options[$name]=$value;
      }
 
+     /**
+      * Gets a named option
+      * @param $name
+      * @return option value
+      */
      public function getOption($name=0){
         $ret='';
         if(isset($this->options[$name])) $ret=$this->options[$name];
         return $ret;
      }
 
+     /**
+      * Sets a Tag
+      * @param $value
+      * @param $name
+      * @param $index
+      * @return void
+      */
      public function setTag($value,$name='tag',$index=0){
           $this->tags[$name][$index]=$value;
      }
 
+     /**
+      * Sets an array (list) of tags
+      * @param $listName
+      * @param $name
+      * @return unknown_type
+      */
      public function setTagList($listName,$name='tag'){
          foreach($listName as $var=>$val){
             $this->tags[$name][$var]=$val;
          }
      }
+     
+     /**
+      * Gets a tag value
+      * @param $name
+      * @param $index
+      * @return unknown_type
+      */
+     public function getTag($name='tag',$index=0){
+        $ret='';
+        if(isset($this->tags[$name][$index])) $ret=$this->tags[$name][$index];
+        return $ret;
+     }
+     
+     
+     /**
+      * Places a directory list in a dataset
+      * @param $dSet
+      * @param $listArray
+      * @param $datasetName
+      * @param $table
+      * @return unknown_type
+      */
 
      public function dirListToDataSet(&$dSet,$listArray,$datasetName,$table='default'){
        //  $dSet['table'][$table]=array();
@@ -272,7 +266,12 @@ abstract class mamurAbstractPageModel {
          $this->setDataSet($datasetName,$dSet);
      }
 
-     //recurcive remove directory - protected as it is dangerous.
+
+     /**
+      * recurcive remove directory - protected as it is dangerous.
+      * @param $dir
+      * @return unknown_type
+      */
      protected function rrmdir($dir) {
          if (is_dir($dir)) {
            $objects = scandir($dir);
@@ -286,54 +285,47 @@ abstract class mamurAbstractPageModel {
         }
      }
 
+     /**
+      * Removes a page
+      * @param $page
+      * @return unknown_type
+      */
      public function removePage($page){
           $pageDir=$this->getMamurUserDir()."/pages{$page}_html";
           $this->rrmdir($pageDir);
      }
 
-
-     public function getTag($name='tag',$index=0){
-        $ret='';
-        if(isset($this->tags[$name][$index])) $ret=$this->tags[$name][$index];
-        return $ret;
-     }
-
-
-    public function setConfig($name='',$value=''){
-       mamurConfig::setConfig($name,$value);
-
-    }
-
-    public function setPlugIn($name='',$status,$file,$version=''){
-        mamurConfig::setPlugIn($name,$status,$file,$version);
-    }
-
-     public function setPlugInClass($plugInName,&$pluginClass){
-           mamurConfig::setPlugInClass($plugInName,$pluginClass);
-     }
-
-      public function getPlugInClass($plugInName){
-          return mamurConfig::getPlugInClass($plugInName);
-     }
-
+     /**
+      * Gets page processing lapsed time
+      * @param $check
+      * @return page time in ms
+      */
      public function pageTime($check=false){
         $ret=false;
-        if(!$check || mamurConfig::$config['pageTime']=='on'){
+        $set=mamurConfig::getInstance()->settings;
+        if(!$check || $set->pageTime=='on'){
             $timer=array();
             list($timer['lusec'], $timer['lsec']) = explode(" ", microtime());
-            mamurConfig::$config['time_end'] = ((float)$timer['lusec'] + (float)$timer['lsec']);
-            $ret=(intval(( mamurConfig::$config['time_end']- mamurConfig::$config['time_start'])*10000)/10);
+            $set->time_end = ((float)$timer['lusec'] + (float)$timer['lsec']);
+            $ret=(intval(( $set->time_end - $set->time_start)*10000)/10);
         }
         return $ret;
     }
-
+    
+	/**
+	 * Persists configustaion settings by Updating  the xml file
+	 * @return void
+	 */
     public function upDateConfigFile(){
       mamurConfig::upDateConfigFile();
     }
 
-     //Sets page url and associated internal varaibles using the value
-    //of the url parameter passed.
-    //the url would normally be the url from the web server ie the current page
+    /**
+     * Sets page url and associated internal varaibles using the value of the url parameter passed.
+     * the url would normally be the url from the web server ie the current page.
+     * @param $url
+     * @return unknown_type
+     */
     public function setPageUrl($url){
         $this->pageURL=$url;
         $checkREQUEST_URI= strip_tags(urldecode($url));
@@ -383,6 +375,17 @@ abstract class mamurAbstractPageModel {
 
 
     }
+    
+    /**
+     * Sets Current User deatils
+     * @param $name
+     * @param $id
+     * @param $loggedin
+     * @param $status
+     * @param $group
+     * @param $statusName
+     * @return unknown_type
+     */
     public function setUser($name='unknown',$id='',$loggedin=false,$status=0,$group='unknown',$statusName='unknown' ){
            $this->session['user']['name']=$name;
            $this->session['user']['id']=$id;
@@ -393,10 +396,20 @@ abstract class mamurAbstractPageModel {
            $this->session['user']['time']=time();
     }
 
+    /**
+     * Gets current user session data
+     * @return unknown_type
+     */
     public function getUser(){
         return $this->session['user'];
     }
 
+    /**
+     * Logs in current user
+     * @param $status
+     * @param $statusName
+     * @return unknown_type
+     */
     public function userLogIn($status=0,$statusName='unknown'){
          $this->session['user']['loggedin']=true;
          if($status!=''){
@@ -407,29 +420,41 @@ abstract class mamurAbstractPageModel {
          $this->sessionReVerify();
     }
 
+   
+
     /*
-        As with all systems stealing a cookie gives you access so we cannot
-        protect against systems which can steal and write cookies on demand.
-        Hosting a rogue javascript could provide such a security breach.
-
-        We use an encryted cookie to stored login data so stealing a cookie prior
-        to login is no use. There is inherent protection from rogue web sites which pass
-        a pre-obtained cookies to a user.
-        The verification code gives another level of protection should the cookie
-        encrytion be hacked so that cookies can be made up and passed to a user.
-        So that the user was not alerted to the problem by being automatically logged
-        in the attacker could pass a made up session id and logged out status.
-        Optionally, a secure system can check stored dataset sessions to see if
-        the verification code matches that in the cookie. This code is also changed
-        at log in so this attack would fail. Most systems probably do not need this
-        extra protection ie other attack routes would probably be easier than breaking
-        the encyption.
-    */
-
+     * sessionReVerify
+     * As with all systems stealing a cookie gives you access so we cannot
+     * protect against systems which can steal and write cookies on demand.
+     * Hosting a rogue javascript could provide such a security breach.
+     *
+     * We use an encryted cookie to stored login data so stealing a cookie prior
+     * to login is no use. There is inherent protection from rogue web sites which pass
+     * a pre-obtained cookies to a user.
+     * The verification code gives another level of protection should the cookie
+     * encrytion be hacked so that cookies can be made up and passed to a user.
+     * So that the user was not alerted to the problem by being automatically logged
+     * in the attacker could pass a made up session id and logged out status.
+     * Optionally, a secure system can check stored dataset sessions to see if
+     * the verification code matches that in the cookie. This code is also changed
+     * at log in so this attack would fail. Most systems probably do not need this
+     * extra protection ie other attack routes would probably be easier than breaking
+     * the encyption.
+     * 
+     */
     public function sessionReVerify(){
            $this->session['verify']=$this->getRandomString(12);
     }
 
+    /**
+     * Checks if user logged in
+     * @param $id
+     * @param $name
+     * @param $status
+     * @param $group
+     * @param $statusName
+     * @return unknown_type
+     */
     public function isLoggedIn($id='',$name='',$status='',$group='',$statusName=''){
         $in= $this->session['user']['loggedin'];
         if($id!=''){
@@ -450,6 +475,11 @@ abstract class mamurAbstractPageModel {
         return $in;
     }
 
+    /**
+     * Logs out a user
+     * @param $status
+     * @return unknown_type
+     */
     public function userLogOut($status=''){
          $this->session['user']['loggedin']=false;
          if($status!=''){
@@ -457,9 +487,20 @@ abstract class mamurAbstractPageModel {
          }
     }
 
+    /**
+     * get page edit status
+     * @param $status
+     * @return unknown_type
+     */
     public function getEditStatus($status=false){
         return $this->session['page']['edit'];
     }
+    
+    /**
+     * Sets page edit status
+     * @param $status
+     * @return unknown_type
+     */
     public function setEditStatus($status=false){
          $this->session['page']['edit']=$status;
     }
@@ -973,19 +1014,7 @@ abstract class mamurAbstractPageModel {
     }
 
 
-    public function registerNamedTagFunction($tag,&$ref,$function){
-         $cback['ref']=$ref;
-         $cback['func']=$function;
-         $this->namedTagCallBack[$tag][]=$cback;
-    }
-
-    public function getNamedTagCallBack($tag){
-         $ret=array();
-         if(isset($this->namedTagCallBack[$tag])){
-           $ret=$this->namedTagCallBack[$tag];
-         }
-         return $ret;
-    }
+   
 
     public function registerUrlFunction(&$ref,$function){
          $cback['ref']=$ref;

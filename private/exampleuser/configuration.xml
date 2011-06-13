@@ -8,7 +8,7 @@
      <set installed="done"/>
 
      <!-- api ID is new on first install, when installed should not be changed  -->
-     <set apiId="F062030415MTXKR"/>
+     <set apiId="F1631225265N14G"/>
 
      <!--error printing (set to none, major, or all)
          As print is seen by users best set to none for post launch web sites-->
@@ -26,7 +26,7 @@
 	     firePhp lets you see error message via fireBug console and you can use
 		 the php statment trigger_error("TRACE some message") to trace variables and backtrace. 
 	  -->
-	 <set firePhp="yes" />
+	 <set firePhp="yes"/>
 
      <!-- default home page  -->
      <set homePage="index.html"/>
@@ -61,8 +61,8 @@
      <set sessionCleaned="1305247723"/>
 
      <!-- salt string of random characters >116 set to "new" to re-randomise for security  -->
-     <set salt="VpZw9b4OfDeEJNI53zNHKh5hTexGAkRyYS5bGwzkspaS2R4Tb8s35Vw92kN6lIlyOiKTbDCuRojuFiWNKelRAwtbTdPK5ssLRKVYiY8REBfjXMxtHAQ6B"/>
-
+     <set salt="sDhVpfVBNtUDF6XtlFxtyq6ULNQ77Qv3ORy2qMSxTsWqqD3ZA6jQSqfKkflzWAV3wtDRe3bgLdkRn4XsCJhBZEimwk7u6xIQSiUVEMycrcLfXX39srS9t"/>
+	 
      <!-- version status -->
 
       <set mamurVersion="1.03"/>
@@ -105,53 +105,55 @@
  <classes>
 	<type name="system">
 	    <module name="core">
+	    	<mvc>
+	    		<!-- load mamurController, mamurModel and mamurView -->
+	    		<class name="mamur" load="onstart"/>
+	    	</mvc>
 	    	<controllers>
-	    		<class name="mamurController" type="static" load="onstart"/>
+	    		
 	        </controllers>
 			<models>
-				<class name="mamurModel" type="static" load="onstart"/>
-				<class name="mailClass" type="public" load="ondemand"/>
+				
+				<class name="mailModel" load="ondemand"/>
 			</models>
 		    <views>
-		    	<class name="mamurView" type="static" load="onstart"/>
-		    	<class name="formTags" type="public" load="ondemand"/>
+		    	<class name="mamurTags" load="ondemand"/>
+		    	<class name="formTags" load="ondemand"/>
 		    </views>
 	    </module>
 		<module name="admin">
-	    	<controllers>
-	    		<class name="adminController" type="static" load="ondemand"/>
-	        </controllers>
-			
+			<mvc>
+				<class name="mamurAdmin" load="ondemand"/>
+			</mvc> 	
 	    </module>
-		
 	</type>
 </classes>	
 
 
 
- <placeholders class="view" method="generalPlaceholder" cache="yes" >
-    <placeholder name="page_content" />                
-    <placeholder name="mamur" />                
-    <placeholder name="title" />                   
-    <placeholder name="http_header" />                 
-    <placeholder name="global" />
-    <placeholder name="shared" />
+ <placeholders class="mamurTags" method="generalPlaceholder" cache="yes">
+    <placeholder name="page_content"/>                
+    <placeholder name="mamur"/>                
+    <placeholder name="title"/>                   
+    <placeholder name="http_header"/>                 
+    <placeholder name="global"/>
+    <placeholder name="shared"/>
                         
-    <placeholder name="structure" />
-    <placeholder name="section" />
-    <placeholder name="blog" />
-    <placeholder name="menu" />
-    <placeholder name="news" />
-    <placeholder name="article" />
+    <placeholder name="structure"/>
+    <placeholder name="section"/>
+    <placeholder name="blog"/>
+    <placeholder name="menu"/>
+    <placeholder name="news"/>
+    <placeholder name="article"/>
                     
-	<placeholder name="all" /> 
+	<placeholder name="all"/> 
     <placeholder name="data" cache="no"/>
     <placeholder name="nonce" cache="no"/>
-    <placeholder name="other_css_files" />
-    <placeholder name="other_js_files" />
+    <placeholder name="other_css_files"/>
+    <placeholder name="other_js_files"/>
     <placeholder name="php" cache="no"/>
     
-	<placeholder name="other_meta" />
+	<placeholder name="other_meta"/>
     <placeholder name="get" cache="no"/>
     <placeholder name="post" cache="no"/>
     <placeholder name="request" cache="no"/>
@@ -159,18 +161,18 @@
     <placeholder name="page_timer" cache="no"/>
  
     <placeholder name="page_timerms" cache="no"/>
-    <placeholder name="page_selected" />
+    <placeholder name="page_selected"/>
     <placeholder name="odd_even" cache="no"/>
     <placeholder name="tag" cache="no"/>
     <placeholder name="option" cache="no"/>
     <placeholder name="protected" cache="no"/>
     
-	<placeholder name="home" />
-    <placeholder name="page_url" />
-    <placeholder name="page_name_ext" />
-    <placeholder name="page_name" />
-    <placeholder name="page_ext" />
-    <placeholder name="page_dir" />
+	<placeholder name="home"/>
+    <placeholder name="page_url"/>
+    <placeholder name="page_name_ext"/>
+    <placeholder name="page_name"/>
+    <placeholder name="page_ext"/>
+    <placeholder name="page_dir"/>
                    
     <placeholder name="unique_serial" cache="no"/>
     <placeholder name="random" cache="no"/>
@@ -178,14 +180,14 @@
                     
 </placeholders>
 	
- <placeholders class="formTags"  method="generalPlaceholder" cache="no" >
-	<placeholder name="form" />
-    <placeholder name="input" />
-    <placeholder name="textarea" />
-    <placeholder name="select" />
-    <placeholder name="endselect" />
-    <placeholder name="optionlist" />
-	<placeholder name="option" />
+ <placeholders class="formTags" method="generalPlaceholder" cache="no">
+	<placeholder name="form"/>
+    <placeholder name="input"/>
+    <placeholder name="textarea"/>
+    <placeholder name="select"/>
+    <placeholder name="endselect"/>
+    <placeholder name="optionlist"/>
+	<placeholder name="option"/>
     <placeholder name="endform" cache="yes"/>
              
  </placeholders>	

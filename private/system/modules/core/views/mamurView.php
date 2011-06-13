@@ -1,60 +1,39 @@
 <?php
-/******************************************************************************
-@version: 1.04;
-@name: view;
-@type: main;
-                          View Classes
- Mamur Content Server; for Dynamic Serving of Web Pages using Templates
-  Version: 1.04  Copyright (c) 2010 Sygenius Ltd  Date: 05/02/2011
+/**
+ * This file contains the static main view Class - mamurView
+ *  Licence:
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, version 3 of the License.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * @name mamurView
+ * @package mamur
+ * @subpackage core
+ * @version 110
+ * @mvc view
+ * @release Mamur 1.10
+ * @releasetag 110
+ * @author Martin Marsh <martinmarsh@sygenius.com>
+ * @copyright Copyright (c) 2011,Sygenius Ltd  
+ * @license http://www.gnu.org/licenses GNU Public License, version 3
+ *                   
+ *  					          
+ */ 
 
-  1st Released on tag: 104
+/**
+ * mamurView is a basic class to print out pages
+ * @package mamur
+ * @subpackage core
+ */
 
-  Licence:
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, version 3 of the License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-  General enquires email:  martinmarsh@mamur.org
-  Licence enquires email:  martinmarsh@sygenius.com
-
- Application:
- This is the view class. It is responsible for output to the client (browser)
- This usually involves the model passing a print request and tag data
-
-
- Important:   Requires php 5.2 and .htaccess enabled
-
-
- Install:     This file private directory/mamur_page_server/
-
-
- Author:      Martin Marsh.
-
-
- Author:      Martin Marsh.
-
- File Version: 104  compatible with versions V1.02+
- History:     Detailed history - Major Events
- 100   09/12/2010 - First alpha version - based on Sygenius Software used with permission
- 102   31/12/2010 - First beta candidate for trial in building live web sites
- 103   10/01/2011 - Revised redirect to work with external urls, home and page_ tags,
-                    php content files cannot have tags inside
- 103   29/01/2011 - =& removed, Quoted parameters now allowed tagnames must have
-                    alphanumeric names with _ or - allowed
- 104   10/04/2011 - custom parameters in php tag, dir for page mapping parameter in content tags
-
-*******************************************************************************/
-
-
- abstract class mamurAbstractPageView {
+ class mamurView {
  /* This prime purpose of this class is to hide data and functions from plugins
     and inlcuded user PHP code.
     i.e. helps prevent name conflicts etc.
@@ -62,18 +41,19 @@
 
     protected $mamur;
     protected $model;
-  // protected $control;
-    protected $templateTags;
+     public $templateTags;
     protected $urlDir;
     protected $pageOutput;
-    protected $contentPageBase;
+    public  $contentPageBase;
     protected $oddeven;
+    protected $placeHolderClasses;
 
 
 
     //class constructor
     public function  __construct() {
-       $this->oddeven=array();;
+       $this->oddeven=array();
+       $this->placeHolderClasses=array();
     }
 
     //function setController(&$control){
@@ -85,10 +65,21 @@
           $this->mamur=$model;    //alias for model (allows php inserts to access
                                     //model using $this->mamur (same as plugins)
     }
+    
+   //A modified singleton method for 5.2 since static class cannot be called by variable
+    public function getPlaceholder($class) {
+        if (!isset($this->placeHolderClasses[$class])) {
+          
+           $this->placeHolderClasses[$class]= new $class($this->model,$this);
+        }
+
+        return $this->placeHolderClasses[$class];
+    }
 
 
     public function insertTag($tag,$pairs){
        $tag=strtolower($tag);
+       $config=mamurConfig::getInstance();
 
        //insert Tag executes for each tag and occurs for main page when
        //doPhpAndPrint is called.
@@ -147,579 +138,15 @@
        if($isTagNamed && isset($this->templateTags[$tag][$var['name']]['file'])){
             $hasTagFile=true;
        }
-       $processTag=true;
-       //trap a Named tag takes priority and can either trap or pre-process
-       foreach($this->model->getNamedTagCallBack($tag) as $callBack){
-                     $processTag=$callBack['ref']->$callBack['func']($tag,$var,$isTagNamed,$hasTagFile);
-
-       }
-       if($processTag) switch($tag){
-         case 'page_content':
-                        $base=$this->contentPageBase;
-                        //a page.xml WITH FILE=X overrideS A NAMED TAG location set in a template WHEN $hasTagFile IS TRUE
-                        if($hasTagFile && isset($var['name'])){
-                            $file=$this->model->relativeDir($base,$this->templateTags[$tag][$var['name']]['file']);
-                        }elseif(isset($var['file'])){
-                           $file=$this->model->relativeDir($base,$var['file']);
-                        }elseif(isset($var['name'])){
-                           $file=$this->model->relativeDir($base,$var['name'].'.html');
-                        }
-                        if(file_exists($file)){
-                            $file=file_get_contents($file);
-                             $this->processTags($file);
-                            $this->doPhpAndPrint($file);
-                        }
-                        break;
-
-         case 'mamur':
-                        print  $file=$this->model->getMamurUrl();
-                        break;
-
-         case 'title':
-                        $title='';
-                        if(isset($this->templateTags['title']['title']['value'])){
-                            $title=$this->templateTags['title']['title']['value'];
-                        }
-                        print $title;
-                        break;
-
-         case 'http_header':
-                        if(isset($var['value'])){
-                           header($var['value']);
-                        }elseif(isset($var['name']) && isset($this->templateTags[$tag][$var['name']])){
-                           header($this->templateTags[$tag][$var['name']]);
-                        }
-
-                        break;
-       case 'global':
-                        if(isset($var['name'])){
-                             print $this->model->getGlobal($var['name']);
-                        }else{
-                             print "[/global tag must have a name! /]";
-                        }
-                        break;
-
-       case 'shared':
-                         $tag='article';
-                         if(isset($var['type'])){
-                            $tag=$var['type'];
-                         }
-       case 'structure':
-       case 'section':
-       case 'blog':
-       case 'menu':
-       case 'news':
-       case 'article':
-                         $base=$this->model->getSharedContentBase("/{$tag}");
-                       //a page.xml WITH FILE=X overrideS A NAMED TAG location set in a template WHEN $hasTagFile IS TRUE
-                         if($hasTagFile && isset($var['name'])){
-                            $file=$this->model->relativeDir($base,$this->templateTags[$tag][$var['name']]['file']);
-                         }elseif(isset($var['name'])){
-                            $file=$this->model->relativeDir($base,$var['name'].'.html');
-                         }elseif(isset($var['file'])){
-                            //if template tag has a file location
-                            $file=$this->model->relativeDir($base,$var['file']);
-                            //if mapped is set then mapped = map_directory/default1/default2...
-                            //usually only one default is set the content is located in
-                            //shared/type/map_directory with name given as the directory or default.html
-                         }elseif(isset($var['dir'])){
-                         	//page name is matched with content
-                         	$file=$this->model->relativeDir($base.$var['dir'],$this->model->getPageName().'.html');
-                         	if(!file_exists($file)){
-                         		$file=$this->model->relativeDir($base.$var['dir'],'default.html');
-                         	}
-       					 }elseif(isset($var['mapped'])){
-                            if(substr($var['mapped'],0,1)=='/' ){
-                                    $var['mapped']=substr($var['mapped'],1);
-                            }
-                            $urlDirList=$this->model->getPageDirList();
-                            $mapList=explode('/',$var['mapped']);
-                            $targetDir=array_shift($mapList);
-                            $targetName=array_pop($mapList);
-                            $targetDir=$this->model->relativeDir($base,$targetDir);
-                            $i=0;
-                            //if multiple directories as in map=x/y/z/name  process y and z
-                            foreach($mapList as $dir){
-                                if(isset($urlDirList[$i])){
-                                    $verify=$targetDir.'/'.$urlDirList[$i++];
-                                    if(file_exits($verify)){
-                                       $targetDir=$verify;
-                                    }else{
-                                       //assume default directory
-                                       $targetDir.='/'.$dir;
-                                    }
-                                }elseif($dir!=''){
-                                    $targetDir.='/'.$dir;
-                                }
-                            }
-                            //now the remaining url directory level if any maps to name or default
-                            if(isset($urlDirList[$i])){
-                               $verify=$targetDir.'/'.$urlDirList[$i++].'.html';
-                               if(file_exits($verify)){
-                                       $file=$verify;
-                               }else{
-                                       $file=$targetDir.='/unknown.html';
-                               }
-                            }else{
-                                $file=$targetDir.='/'.$targetName.'.html';
-                            }
-
-                         }
-
-                         if(file_exists($file)){
-                                $file=file_get_contents($file);
-                                 $this->processTags($file);
-                                $this->doPhpAndPrint($file);
-                         }else{
-                                print "[/no shared_content file: {$file} /]";
-                         }
-                       break;
-
-
-        case 'all':
-                        $contType='page';
-                        if(isset($var['type'])){
-                           $contType=$var['type'];
-                        }
-                        $match='*.html';
-                        $separator='';
-                        if(isset($var['separator'])){
-                           $separator=$var['separator'];
-                        }
-                        if($contType=='page'){
-                            $base=$this->contentPageBase;
-                        }else{
-                             $base=$this->model->getSharedContentBase("/{$contType}");
-                        }
-                        if(isset($var['match'])){
-                            if(substr($match,0,1)=='/')$match= substr($match,1);
-                        }
-                        $filelist=glob($this->model->relativeDir($base,$this->templateTags[$tag][$var['name']]['file'].'/'.$match));
-                        $sep='';
-                        if(!empty($filelist))foreach($filelist as $file){
-                           $file=$sep.file_get_contents($file);
-                           $this->processTags($file);
-                           $this->doPhpAndPrint($file);
-                           $sep=$separator;
-                        }
-                        break;
-
-        case 'data':
-                        $name="default";
-                        $table="default";
-                        $row=0;
-                        $name="default";
-                        if(isset($var['name'])){
-                           $name=$var['name'];
-                        }
-                        if(isset($var['table'])){
-                           $table=$var['table'];
-                        }
-                        if(isset($var['row'])){
-                           $row=$var['row'];
-                        }
-                        $dataSet=$this->mamur->getDataSet($name);
-                        if(isset($var['index'])){
-                            $index=$var['index'];
-                        }
-                        if(isset($dataSet['table'][$table][$row][$name])){
-                           $toprint=$dataSet['table'][$table][$row][$name];
-                           $this->processTags($toprint);
-                           $this->doPhpAndPrint($toprint);
-                        }
-                        break;
-
-        case 'nonce':
-                        $length=16;
-                        if(isset($var['length'])){
-                          $length=$var['length'];
-                        }
-                        $useVar='default';
-                        if(isset($var['name'])){
-                           $useVar=$var['name'];
-                        }
-                        print $this->mamur->setNonce($useVar,$length);
-                        break;
-
-         case 'other_css_files':
-                         if(!isset($var['name'])){
-                            if(isset($this->templateTags['css'] )){
-                              foreach( $this->templateTags['css'] as $tName=>$tFields){
-                                 if(isset($tFields['file'])){
-                                    print "<link href=\"{$tFields['file']}\" rel=\"stylesheet\" type=\"text/css\" />\n";
-                                 }
-                              }
-                            }
-                        }else{
-                           if(isset($this->templateTags['css'][$var['name']]['file'])){
-                                $file=$this->templateTags['css'][$var['name']]['file'];
-                                if(isset($file)){
-                                  print "<link href=\"{$file}\" rel=\"stylesheet\" type=\"text/css\" />\n";
-                                }
-                           }
-                        }
-                        break;
-
-
-         case 'other_js_files':
-                        if(!isset($var['name'])){
-                            if(isset($this->templateTags['javascript'] )){
-                              foreach( $this->templateTags['javascript'] as $tName=>$tFields){
-                                 if(isset($tFields['file'])){
-                                   print "<script type=\"text/javascript\" src=\"{$tFields['file']}\"></script>\n";
-                                 }
-                              }
-                            }
-                        }else{
-                           if(isset($this->templateTags['javascript'][$var['name']]['file'])){
-                                $file=$this->templateTags['javascript'][$var['name']]['file'];
-                                if(isset($file)){
-                                   print "<script type=\"text/javascript\" src=\"{$file}\"></script>\n";
-                                }
-                           }
-                        }
-
-                        break;
-
-         case 'php':
-                         $base=$this->model->getPhpBase();
-                         //a page.xml overrideS A NAMED TAG WHEN $hasTagFile IS TRUE
-                         if($hasTagFile && isset($var['name'])){
-                            $file=$this->model->relativeDir($base,$this->templateTags[$tag][$var['name']]['file']);
-                         }elseif(isset($var['file'])){
-                            $file=$this->model->relativeDir($base,$var['file']);
-                         }elseif(isset($var['name'])){
-                            $file=$this->model->relativeDir($base,$var['name'].'.php');
-                         }
-                         if(file_exists($file)){
-                                $file=file_get_contents($file);
-                                $this->mamur->passParameters($var);
-                                $this->doPhpAndPrint($file);
-                         }else{
-                                print "[no script file: {$file} /]";
-                         }
-
-                       break;
-
-         case 'other_meta':
-                      if(!isset($var['name'])){
-                            if(isset($this->templateTags['meta'] )){
-                              foreach( $this->templateTags['meta'] as $metaName=>$metaFields){
-                                 print $this->metaContentStr($metaName,$metaFields);
-                              }
-                            }
-                      }else{
-                           if(isset($this->templateTags['meta'][$var['name']]['value'])){
-                              print $this->metaContentStr($var['name'],$this->templateTags['meta'][$var['name']]);
-                           }
-                      }
-                      break;
-
-         case 'get':
-                      if(isset($var['name'])){
-                         if(isset($_GET[$var['name']])){
-                          print htmlspecialchars($_GET[$var['name']]);
-                         }
-                      }else{
-                         foreach($_GET as $var=>$val){
-                             print $var=htmlspecialchars($val).'<br />';
-                         }
-
-                      }
-                      break;
-
-         case 'post':
-                      if(isset($var['name'])){
-                        if(isset($_POST[$var['name']])){
-                          print htmlspecialchars($_POST[$var['name']]);
-                        }
-                      }else{
-                         foreach($_POST as $var=>$val){
-                             print $var=htmlspecialchars($val).'<br />';
-                         }
-
-                      }
-                      break;
-
-         case 'request':
-                      if(isset($var['name'])){
-                         if(isset($_REQUEST[$var['name']])){
-                          print htmlspecialchars($_REQUEST[$var['name']]);
-                         }
-                      }else{
-                         foreach($_REQUEST as $var=>$val){
-                             print $var=htmlspecialchars($val).'<br />';
-                         }
-                      }
-
-                      break;
-
-           case 'cookie':
-                      if(isset($var['name'])){
-                        if(isset($_GET[$var['cookie']])){
-                          print htmlspecialchars($_COOKIE[$var['name']]);
-                        }
-                      }else{
-                         foreach($_COOKIE as $var=>$val){
-                             print $var=htmlspecialchars($val).'<br />';
-                         }
-                      }
-                      break;
-
-           case 'page_timer':
-                    $pagetime=$this->model->pageTime(true);
-                    if($pagetime!==false){
-                        print "<br>page Time {$pagetime} ms<br>";
-                        
-                      }
-                    break;
-
-           case 'page_timerms':
-                    print $this->model->pageTime();
-                               $timer=array();
-                    print "<BR>".(intval(($GLOBALS['mamurPageConfig']['start_config']- mamurConfig::$config['time_start'])*10000)/10)."ms <br>";           
-                    print "<BR>".(intval(($GLOBALS['mamurPageConfig']['end_config']- $GLOBALS['mamurPageConfig']['start_config'])*10000)/10)."ms <br>";
- 
-           
-             
-                    break;
-
-           case 'page_selected':
-                    $match=true;
-                    if(isset($var['name'])){
-                        if( $var['name'] != $this->model->getPageFile() ){
-                            $match=false;
-                        }
-                    }
-                    if(isset($var['dir'])){
-                       if(substr($var['dir'],0,1)=='/' ){
-                                 $var['dir']=substr($var['dir'],1);
-                       }
-                       $urlDirList=$this->model->getPageDirList();
-                       $dirList=explode('/',$var['dir']);
-                       $i=0;
-                       foreach($dirList as $dir){
-                          if(isset($urlDirList[$i])){
-                            $verify=$urlDirList[$i++];
-                            if($verify!=$dir){
-                              $match=false;
-                              break;
-                            }
-                          }elseif($dir!=''){
-                              $match=false;
-                              break;
-                          }
-
-                       }
-                    }
-                    if(isset($var['url_part'])){
-                       $fileUrl=$this->model->getPageDir().'/'.$this->model->getPageFile().'.'.$this->model->getPageExt();
-                       if(substr($var['url_part'],0,1)=='/'){
-                            if(substr($fileUrl,0,1)!='/' ){
-                                 $fileUrl='/'.$fileUrl;
-                            }
-                       }else{
-                            if(substr($fileUrl,0,1)=='/'){
-                                 $fileUrl=substr($fileUrl,1);
-                            }
-                       }
-                       if(strlen($var['url_part'])<=strlen($fileUrl)){
-                         $fileUrl=substr($fileUrl,0,strlen($var['url_part']));
-                          if( $var['url_part'] != $fileUrl){
-                              $match=false;
-                          }
-                       }else{
-                           $match=false;
-                       }
-                    }
-
-                    if($match){
-                       print "_selected";
-                    }
-                    break;
-
-
-
-          case 'odd_even':
-                     $rowVar="default";
-                     if(isset($var['name'])){
-                        $rowVar=$var['name'];
-                     }
-                     if(!isset($this->oddeven[$rowVar])){
-                        $this->oddeven[$rowVar]='even';
-                     }
-                     if($this->oddeven[$rowVar]=='even'){
-                        $this->oddeven[$rowVar]='odd';
-                     }else{
-                        $this->oddeven[$rowVar]='even';
-                     }
-                     if(isset($var['set'])){
-                        $this->oddeven[$rowVar]=$var['set'];
-                     }
-                     print $this->oddeven[$rowVar];
-                     break;
-
-          case 'tag':
-                     $tagName='tag';
-                     $index=0;
-                     if(isset($var['name'])){
-                        $tagName=$var['name'];
-                     }
-                     if(isset($var['index'])){
-                        $index=$var['index'];
-                     }
-                     $toprint=$this->model->getTag($tagName,$index);
-                     $this->processTags($toprint);
-                     $this->doPhpAndPrint($toprint);
-                     break;
-
-          case 'option':
-                     $name=0;
-                     if(isset($var['name'])){
-                        $name=$var['name'];
-                     }
-                     print $this->model->getOption($name);
-                     break;
-
-          case 'protected':
-                    $pass=false;
-                    $user=$this->model->getUser();
-
-                    if (isset($user['loggedin']) && $user['loggedin']==true  ){
-                        $pass=true;
-
-                        if(isset($var['allow_group'])){
-                            if( $var['allow_group'] != $user['group'] ){
-                                $pass=false;
-                            }
-                        }
-                        if(isset($var['disallow_group'])){
-                            if( $var['disallow_group'] == $user['group'] ){
-                                $pass=false;
-                            }
-                        }
-                         if(isset($var['allow_status'])){
-                            if( $var['allow_status'] != $user['status'] ){
-                                $pass=false;
-                            }
-                         }
-                         if(isset($var['disallow_status'])){
-                            if( $var['disallow_status'] == $user['status'] ){
-                                $pass=false;
-                            }
-                        }
-                        if(isset($var['allow_status_and_above'])){
-                            if( $user['status'] < $var['allow_status_and_above']  ){
-                                $pass=false;
-                            }
-                        }
-                        if(isset($var['allow_status_name'])){
-                            if( $user['statusName'] != $var['allow_status_name']  ){
-                                $pass=false;
-                            }
-                        }
-                        if(isset($var['disallow_status_name'])){
-                            if( $user['statusName'] == $var['disallow_status_name']  ){
-                                $pass=false;
-                            }
-                        }
-
-                    }
-                    if(!$pass){
-                       if(isset($var['login_page'])){
-                           $redirect= $var['login_page'];
-                       }else{
-                           $redirect=$this->model->getConfigValue('loginPage');
-                           if(is_null($redirect)){
-                               $redirect="login.html";
-                           }
-                       }
-                       $this->redirect($redirect);
-                    }
-                    break;
-
-           case 'home':
-                     $ref='';
-                     if(isset($var['ref'])){
-                       $ref=$var['ref'];
-                       if($ref!='' && substr($ref,0,1)!='/'){
-                          $ref='/'.$ref;
-                       }
-                     }
-                    print  $this->model->getHomeUri().$ref;
-                    break;
-
-           case 'page_url':
-                    print $this->model->getUrl();
-                    break;
-
-           case 'page_name_ext':
-                    $page=$this->model->getPageFile();
-                    $ext=$this->model->getPageExt();
-                    if($ext!=''){
-                      $page.='.'.$ext;
-                    }
-                    print $page;
-                    break;
-
-           case 'page_name':
-                    print $page=$this->model->getPageFile();
-                    break;
-
-           case 'page_ext':
-                    print $this->model->getPageExt();
-                    break;
-
-           case 'page_dir':
-                    print $this->model->getPageDir();
-                    break;
-
-           case 'unique_serial':
-                    print $this->model->unique_serial();
-                    break;
-
-           case 'random':
-                    $length=6;
-                    $upperonly=false;
-                    if(isset($var['length'])){
-                       $length=$var['length'];
-                    }
-                    if(isset($var['upper_only'])){
-                       $length=true;
-                    }
-                    print $this->model->getRandomString($length,$upperonly);
-                    break;
-
-           case 'date':
-                    $format="r";
-                    $dateSrc="now";
-                    if(isset($var['format'])){
-                       $format=$var['format'];
-                    }
-                    if(isset($var['when'])){
-                       $dateSrc=$var['when'];
-                    }
-                    $dateTime = new DateTime($dateSrc);
-                    print $dateTime->format($format);
-                    break;
-
-
-         default:
-         		//try form tags
-         	    if(mamurClassLoader("system","core","views","formTags")){
-         	    	$formTags=new formTags($this->model,$this);
-         	    	$formTags->tags($tag,$var);
-         	    	
-         	    }
-                foreach($this->model->getTagCallBack() as $callBack){
-                     if($callBack['ref']->$callBack['func']($tag,$var)==true) break;
-                }
-
-       }
-
+     
+       $tagObj=$config->placeholders->$tag;
+       $tagInstance=$this->getPlaceholder($tagObj->class); 
+       $tagMethod=$tagObj->method;
+       $tagInstance->$tagMethod($tag,$var,$isTagNamed,$hasTagFile);
+     
     }
 
-   protected function metaContentStr($metaName,$metaFields){
+ function metaContentStr($metaName,$metaFields){
         $ret='';
         $content='';
         $others='';
@@ -915,16 +342,17 @@ their error page instead -->
      }
 
 }
-/* end of abstract class */
+/* end of class */
 
-//This is not neat but this call back cannot work in class I think this is
-//a php limitation - but it works and does not really cause a problem
-//Warning this outside of the class in global function space.
-//This is a much repeated constant function and needs to be more efficient thsn
-//create_function
+
+/**
+ * Warning this is a call back function and NOT a class method.
+ * This is not neat but is a v5.2+ work around for not having Anonymous functions
+ * which would be used in the above class
+ * @param $matches
+ * @return unknown_type
+ */
 function mamur_view_replaceTag($matches){
-
-  GLOBAL $mamurPageView;
 
          $pairs='';
          $tagname='';
@@ -938,7 +366,7 @@ function mamur_view_replaceTag($matches){
          }
          if($tagname!=''){
             ob_start();
-            $mamurPageView->insertTag($tagname,$pairs);
+            mamurController::getView()->insertTag($tagname,$pairs);
             $out= ob_get_contents();
             ob_end_clean();
         }
