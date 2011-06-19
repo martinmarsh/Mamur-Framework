@@ -99,6 +99,7 @@ abstract class mamurStart{
 	
 	public static function setup($privateDir,$publicDir){
 	
+	 
 		/**
 		 * The following can be changed for special purposes in which case
 		 * alter or remove the update allowed setting
@@ -114,13 +115,14 @@ abstract class mamurStart{
         $set->system=$system;
         $set->root=realpath($root);
         $set->public=$publicDir;
-        if(file_exists("$mamur/user")){
-        	$set->user="$mamur/user";
+        if(file_exists("$mamur/usersites/user")){
+        	$set->user="$mamur/usersites/user";
         }else{
-        	$set->user="$mamur/exampleuser";
+        	$set->user="$mamur/usersites/exampleuser";
         }
         $set->plugins="$mamur/plugins";
         $set->logDir=$set->user."/errorlogs";
+        $set->build=$set->user."/build";
         $set->uri=$_SERVER['REQUEST_URI'];
 		list($set->start_usec, $set->start_sec)= explode(" ", microtime());
 		
@@ -132,6 +134,7 @@ abstract class mamurStart{
         //use object methods with $set from now on:
         $set=$config->settings;
         error_reporting(-1);
+        register_shutdown_function('mamurShutDown');
 		set_error_handler('mamurErrorHandler');
 		set_exception_handler('mamurExceptionHandler');
 		if(strtolower($set->firePhp)=='yes'){
@@ -142,7 +145,6 @@ abstract class mamurStart{
 		//In mamur you can use this function to add aditional autoloaders
 		spl_autoload_register('mamurAutoClassLoad',false);
 	
-			
 		//now load the required pre-loaded classes
 		$classes=$config->classes;
 		foreach($classes->getAll() as $name=>$class){ 
@@ -179,6 +181,25 @@ function mamurAutoClassLoad($name){
    }
 }
 
+/**
+ * Fatal Errors must also be trapped and logged
+ * @return void
+ */
+function mamurShutDown(){	
+     if (($error = error_get_last())) {       
+			$geterror= date("Y-m-d H:i:s (T)").
+			     " FATAL ERROR CAUSED SHUTDOWN of Page URI: '{$_SERVER['REQUEST_URI']}' due to error: ".
+			     $error['message']." in ".$error['file']." line ".$error['line'];
+			if(class_exists('FirePHP')){
+				$firephp = FirePHP::getInstance(true);			     	
+				$firephp->log($geterror);
+			}	
+			$logDir=mamurConfig::getInstance()->settings->logDir;
+   			$logfile="fatal_shutdowns_log.txt";
+   			error_log("$geterror\n",3,"$logDir/{$logfile}");	
+   					
+      }	
+}
 
 /**
  * PHP Exception handler for uncaught exceptions
@@ -187,7 +208,7 @@ function mamurAutoClassLoad($name){
  */
 function mamurExceptionHandler($exception) {
    $logDir=mamurConfig::getInstance()->settings->logDir;
-   $logfile="critical_setuperrors_log.txt";
+   $logfile="critical_exceptions_log.txt";
    print  'uncaught_exception';
    $geterror= date("Y-m-d H:i:s (T)")." Uncaught Exception Page URL: '{$_SERVER['REQUEST_URI']}' was aborted due to: ".$exception->getMessage();
    error_log("$geterror\n",3,"$logDir/{$logfile}");
@@ -252,6 +273,7 @@ function mamurErrorHandler($errno, $errmsg, $filename, $linenum, $vars)
     */
 
     $terminate=false;
+   
     switch($errno){
        case E_ERROR:
        case E_RECOVERABLE_ERROR:
@@ -261,7 +283,7 @@ function mamurErrorHandler($errno, $errmsg, $filename, $linenum, $vars)
                 break;
        case E_WARNING:
                 $myerrorlevel=3;
-                $printstr="warning: $errstr<BR>\n";
+                $printstr="WARNING: $errstr<BR>\n";
                 $logfile="warning_log.txt";
                 break;
        case E_USER_ERROR:
@@ -269,18 +291,24 @@ function mamurErrorHandler($errno, $errmsg, $filename, $linenum, $vars)
                    	  $terminate=true;
                 }
                 $myerrorlevel=5;
-                $printstr="warning user critical: $errstr<BR>\n";
+                $printstr="USER ERROR NOTICE: $errstr<BR>\n";
                 $logfile="critical_setuperrors_log.txt";
                 break;
        case E_USER_NOTICE:
                 $myerrorlevel=2;
-                $printstr="debug notice: $errstr<BR>\n";
+                $printstr="USER DEBUG NOTICE: $errstr<BR>\n";
                 $logfile="debug_notices_log.txt";
                 break;
+       case E_NOTICE:
+       	        $myerrorlevel=4;
+                $printstr="PHP ERROR NOTICE: $errstr<BR>\n";
+                $logfile="php_notices_log.txt";
+                break;
+       	
        default:
               $myerrorlevel=1;
-              $printstr="default error no $errno: $errstr<BR>\n";
-              $logfile="minor_notices_log.txt";
+              $printstr="DEFAULT ERRORT: no. $errno: $errstr<BR>\n";
+              $logfile="default_notices_log.txt";
 
 	}
     //always do firbug reporting even if supressed error
@@ -294,7 +322,7 @@ function mamurErrorHandler($errno, $errmsg, $filename, $linenum, $vars)
        		$firephp->trace($printstr);
         }else{			
 			$firephp->log($printstr);
-			if ($debugTrace=='YES' && $myerrorlevel>3){
+			if ($debugTrace=='on' && $myerrorlevel>3){
 				if(isset($vars) && is_array($vars) ){
                  	$firephp->log($vars, 'Trapped Variable State');           	
             	}
@@ -311,30 +339,11 @@ function mamurErrorHandler($errno, $errmsg, $filename, $linenum, $vars)
    	if (error_reporting() != 0) {
    		if ($printstr!=""){
         	if($pstat=='all' || ($pstat=='major' && $myerrorlevel>3)){
-            	print $printstr;
-                if($debugTrace=='YES' && $myerrorlevel>3){
-                	if(isset($vars) && is_array($vars)
-                    ){
-                    	print "<br/>Variables:<br />"; 
-                   		var_dump($vars);            	
-                    }
-                    print "<br/>Back Trace:<br />";
-                    debug_print_backtrace(); 
-                    print "<br/><hr/><br/>";                          	
-                }
+            	print $printstr;   
              }
         }
         
         if (isset($logfile) && $logfile!=""){
-        	if($debugTrace=='YES' && $myerrorlevel>3){
-            	if(isset($vars) && is_array($vars)){
-                    	$printstr.="\nVariables:\n";
-                   		$printstr.= var_export($vars, true); 
-                }
-                $printstr.="\nBack Trace:\n";                            	
-                $printstr.= var_export(debug_backtrace(),true);
-                $printstr.="\n---\n";   
-            }
             if($lstat=='all' || ($lstat=='major' && $myerrorlevel>3) || $terminate){
             	if($terminate){
             		$printstr="\n\n***** TERMINATED ERROR:\n$printstr";

@@ -65,7 +65,7 @@ abstract class mamurController{
 			}
 		}
 	
-		@trigger_error("TRACE matched $controllerToUse");
+		//@trigger_error("TRACE matched $controllerToUse");
 		
 		if(!isset($_COOKIE["locid"]) && $set->allowPermCookie=='yes' ){
         	self::$model->setLocidCookie();
@@ -133,13 +133,23 @@ abstract class mamurController{
            		self::$view->directPhpView();
 
         	}else{
-          	  //This is a STANDARD URL request for page templating
-              //control now requests that model reads the page data
-              //and any xml page and template definitions
-              self::$model->readPageXML();
-               //We now instruct view to print via templating
-               //the view will ask the model for status and processing of errors
-              self::$view->templatedView();
+          	  //This is a STANDARD URL request
+          	  
+          	  $builtFile=$config->settings->build.self::$model->getPageDir().'/'.self::$model->getPageName().".php";
+          	  if($config->settings->pageBuild=='yes' && file_exists($builtFile)){
+          	  	self::$view->showBuiltPage($builtFile);
+          	  	print "<br/>page re-load = ";
+          	  	print self::$model->pageTime();
+          	  }else{
+	  
+	        	  //for page templating
+	              //control now requests that model reads the page data
+	              //and any xml page and template definitions
+	             self::$model->readPageXML();
+	               //We now instruct view to print via templating
+	               //the view will ask the model for status and processing of errors
+	             self::$view->templatedView();
+          	  }
         	}
     	}
     	//now just before print output (ob_end_flush) we will set session cookie and store

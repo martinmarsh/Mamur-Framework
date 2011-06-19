@@ -2,38 +2,44 @@
 class mamurTags {
 
 	private $model;
-	private $mamur;
 	private $view;
 	
-	function __construct($model,$view){	
+	public function __construct($model,$view){	
 		$this->model=$model;
-		$this->mamur=$model;
 		$this->view=$view;
 	}
 	
+	/**
+	 * 
+	 * @param $var
+	 * @param $hasTagFile
+	 * @return unknown_type
+	 */
+	public function page_content($var,$hasTagFile){
+		$base=$this->view->contentPageBase;
+        //a page.xml WITH FILE=X overrideS A NAMED TAG location set in a template WHEN $hasTagFile IS TRUE
+        if($hasTagFile && isset($var['name'])){
+                            $file=$this->model->relativeDir($base,$this->view->templateTags[$tag][$var['name']]['file']);
+        }elseif(isset($var['file'])){
+                           $file=$this->model->relativeDir($base,$var['file']);
+        }elseif(isset($var['name'])){
+                           $file=$this->model->relativeDir($base,$var['name'].'.html');
+        }
+        if(file_exists($file)){
+             $file=file_get_contents($file);
+             $this->view->processTags($file);
+             return $file;
+           
+        }
+	}
 	
-	function generalPlaceholder($tag,$var,$isTagNamed,$hasTagFile){
+	
+	function generalPlaceholder($var,$hasTagFile,$tag){
 		  
       switch($tag){
-         case 'page_content':
-                        $base=$this->view->contentPageBase;
-                        //a page.xml WITH FILE=X overrideS A NAMED TAG location set in a template WHEN $hasTagFile IS TRUE
-                        if($hasTagFile && isset($var['name'])){
-                            $file=$this->model->relativeDir($base,$this->view->templateTags[$tag][$var['name']]['file']);
-                        }elseif(isset($var['file'])){
-                           $file=$this->model->relativeDir($base,$var['file']);
-                        }elseif(isset($var['name'])){
-                           $file=$this->model->relativeDir($base,$var['name'].'.html');
-                        }
-                        if(file_exists($file)){
-                            $file=file_get_contents($file);
-                             $this->view->processTags($file);
-                            $this->view->doPhpAndPrint($file);
-                        }
-                        break;
-
+         
          case 'mamur':
-                        print  $file=$this->model->getMamurUrl();
+                        return  $this->model->getMamurUrl();
                         break;
 
          case 'title':
@@ -41,7 +47,7 @@ class mamurTags {
                         if(isset($this->view->templateTags['title']['title']['value'])){
                             $title=$this->view->templateTags['title']['title']['value'];
                         }
-                        print $title;
+                        return $title;
                         break;
 
          case 'http_header':
@@ -54,9 +60,9 @@ class mamurTags {
                         break;
        case 'global':
                         if(isset($var['name'])){
-                             print $this->model->getGlobal($var['name']);
+                             return $this->model->getGlobal($var['name']);
                         }else{
-                             print "[/global tag must have a name! /]";
+                             return "[/global tag must have a name! /]";
                         }
                         break;
 
@@ -130,7 +136,8 @@ class mamurTags {
                          if(file_exists($file)){
                                 $file=file_get_contents($file);
                                 $this->view->processTags($file);
-                                $this->view->doPhpAndPrint($file);
+                                return($file);
+                               // $this->view->doPhpAndPrint($file);
                          }else{
                                 print "[/no shared_content file: {$file} /]";
                          }
@@ -160,9 +167,10 @@ class mamurTags {
                         if(!empty($filelist))foreach($filelist as $file){
                            $file=$sep.file_get_contents($file);
                            $this->view->processTags($file);
-                           $this->view->doPhpAndPrint($file);
+                           $file.=$file;
                            $sep=$separator;
                         }
+                        return($file);
                         break;
 
         case 'data':
@@ -179,14 +187,14 @@ class mamurTags {
                         if(isset($var['row'])){
                            $row=$var['row'];
                         }
-                        $dataSet=$this->mamur->getDataSet($name);
+                        $dataSet=$this->model->getDataSet($name);
                         if(isset($var['index'])){
                             $index=$var['index'];
                         }
                         if(isset($dataSet['table'][$table][$row][$name])){
                            $toprint=$dataSet['table'][$table][$row][$name];
                            $this->view->processTags($toprint);
-                           $this->view->doPhpAndPrint($toprint);
+                          return $toprint;
                         }
                         break;
 
@@ -199,7 +207,7 @@ class mamurTags {
                         if(isset($var['name'])){
                            $useVar=$var['name'];
                         }
-                        print $this->mamur->setNonce($useVar,$length);
+                        return $this->model->setNonce($useVar,$length);
                         break;
 
          case 'other_css_files':
@@ -207,7 +215,7 @@ class mamurTags {
                             if(isset($this->view->templateTags['css'] )){
                               foreach( $this->view->templateTags['css'] as $tName=>$tFields){
                                  if(isset($tFields['file'])){
-                                    print "<link href=\"{$tFields['file']}\" rel=\"stylesheet\" type=\"text/css\" />\n";
+                                    return "<link href=\"{$tFields['file']}\" rel=\"stylesheet\" type=\"text/css\" />\n";
                                  }
                               }
                             }
@@ -215,7 +223,7 @@ class mamurTags {
                            if(isset($this->view->templateTags['css'][$var['name']]['file'])){
                                 $file=$this->view->templateTags['css'][$var['name']]['file'];
                                 if(isset($file)){
-                                  print "<link href=\"{$file}\" rel=\"stylesheet\" type=\"text/css\" />\n";
+                                  return "<link href=\"{$file}\" rel=\"stylesheet\" type=\"text/css\" />\n";
                                 }
                            }
                         }
@@ -227,7 +235,7 @@ class mamurTags {
                             if(isset($this->view->templateTags['javascript'] )){
                               foreach( $this->view->templateTags['javascript'] as $tName=>$tFields){
                                  if(isset($tFields['file'])){
-                                   print "<script type=\"text/javascript\" src=\"{$tFields['file']}\"></script>\n";
+                                   return "<script type=\"text/javascript\" src=\"{$tFields['file']}\"></script>\n";
                                  }
                               }
                             }
@@ -235,7 +243,7 @@ class mamurTags {
                            if(isset($this->view->templateTags['javascript'][$var['name']]['file'])){
                                 $file=$this->view->templateTags['javascript'][$var['name']]['file'];
                                 if(isset($file)){
-                                   print "<script type=\"text/javascript\" src=\"{$file}\"></script>\n";
+                                   return "<script type=\"text/javascript\" src=\"{$file}\"></script>\n";
                                 }
                            }
                         }
@@ -254,7 +262,7 @@ class mamurTags {
                          }
                          if(file_exists($file)){
                                 $file=file_get_contents($file);
-                                $this->mamur->passParameters($var);
+                                $this->model->passParameters($var);
                                 $this->view->doPhpAndPrint($file);
                          }else{
                                 print "[no script file: {$file} /]";
@@ -266,12 +274,12 @@ class mamurTags {
                       if(!isset($var['name'])){
                             if(isset($this->view->templateTags['meta'] )){
                               foreach( $this->view->templateTags['meta'] as $metaName=>$metaFields){
-                                 print $this->view->metaContentStr($metaName,$metaFields);
+                                 return $this->view->metaContentStr($metaName,$metaFields);
                               }
                             }
                       }else{
                            if(isset($this->view->templateTags['meta'][$var['name']]['value'])){
-                              print $this->view->metaContentStr($var['name'],$this->templateTags['meta'][$var['name']]);
+                              return $this->view->metaContentStr($var['name'],$this->templateTags['meta'][$var['name']]);
                            }
                       }
                       break;
@@ -279,11 +287,11 @@ class mamurTags {
          case 'get':
                       if(isset($var['name'])){
                          if(isset($_GET[$var['name']])){
-                          print htmlspecialchars($_GET[$var['name']]);
+                          return htmlspecialchars($_GET[$var['name']]);
                          }
                       }else{
                          foreach($_GET as $var=>$val){
-                             print $var=htmlspecialchars($val).'<br />';
+                             return $var=htmlspecialchars($val).'<br />';
                          }
 
                       }
@@ -292,11 +300,11 @@ class mamurTags {
          case 'post':
                       if(isset($var['name'])){
                         if(isset($_POST[$var['name']])){
-                          print htmlspecialchars($_POST[$var['name']]);
+                          return htmlspecialchars($_POST[$var['name']]);
                         }
                       }else{
                          foreach($_POST as $var=>$val){
-                             print $var=htmlspecialchars($val).'<br />';
+                             return $var=htmlspecialchars($val).'<br />';
                          }
 
                       }
@@ -305,11 +313,11 @@ class mamurTags {
          case 'request':
                       if(isset($var['name'])){
                          if(isset($_REQUEST[$var['name']])){
-                          print htmlspecialchars($_REQUEST[$var['name']]);
+                          return htmlspecialchars($_REQUEST[$var['name']]);
                          }
                       }else{
                          foreach($_REQUEST as $var=>$val){
-                             print $var=htmlspecialchars($val).'<br />';
+                             return $var=htmlspecialchars($val).'<br />';
                          }
                       }
 
@@ -330,13 +338,13 @@ class mamurTags {
            case 'page_timer':
                     $pagetime=$this->model->pageTime(true);
                     if($pagetime!==false){
-                        print "<br>page Time {$pagetime} ms<br>";
+                        return "<br>page Time {$pagetime} ms<br>";
                         
                       }
                     break;
 
            case 'page_timerms':
-                    print $this->model->pageTime();
+                    return $this->model->pageTime();
                                $timer=array();
                    // print "<BR>".(intval(($GLOBALS['mamurPageConfig']['start_config']- mamurConfig::$config['time_start'])*10000)/10)."ms <br>";           
                    // print "<BR>".(intval(($GLOBALS['mamurPageConfig']['end_config']- $GLOBALS['mamurPageConfig']['start_config'])*10000)/10)."ms <br>";
@@ -417,7 +425,7 @@ class mamurTags {
                      if(isset($var['set'])){
                         $this->oddeven[$rowVar]=$var['set'];
                      }
-                     print $this->oddeven[$rowVar];
+                     return $this->oddeven[$rowVar];
                      break;
 
           case 'tag':
@@ -431,7 +439,8 @@ class mamurTags {
                      }
                      $toprint=$this->model->getTag($tagName,$index);
                      $this->view->processTags($toprint);
-                     $this->view->doPhpAndPrint($toprint);
+                     //$this->view->doPhpAndPrint($toprint);
+                    return $toprint;
                      break;
 
           case 'option':
@@ -439,7 +448,7 @@ class mamurTags {
                      if(isset($var['name'])){
                         $name=$var['name'];
                      }
-                     print $this->model->getOption($name);
+                     return $this->model->getOption($name);
                      break;
 
           case 'protected':
@@ -507,11 +516,11 @@ class mamurTags {
                           $ref='/'.$ref;
                        }
                      }
-                    print  $this->model->getHomeUri().$ref;
+                    return  $this->model->getHomeUri().$ref;
                     break;
 
            case 'page_url':
-                    print $this->model->getUrl();
+                    return $this->model->getUrl();
                     break;
 
            case 'page_name_ext':
@@ -520,23 +529,23 @@ class mamurTags {
                     if($ext!=''){
                       $page.='.'.$ext;
                     }
-                    print $page;
+                   return $page;
                     break;
 
            case 'page_name':
-                    print $page=$this->model->getPageFile();
+                    return $page=$this->model->getPageFile();
                     break;
 
            case 'page_ext':
-                    print $this->model->getPageExt();
+                   return $this->model->getPageExt();
                     break;
 
            case 'page_dir':
-                    print $this->model->getPageDir();
+                    return $this->model->getPageDir();
                     break;
 
            case 'unique_serial':
-                    print $this->model->unique_serial();
+                    return $this->model->unique_serial();
                     break;
 
            case 'random':
@@ -548,7 +557,7 @@ class mamurTags {
                     if(isset($var['upper_only'])){
                        $length=true;
                     }
-                    print $this->model->getRandomString($length,$upperonly);
+                    return $this->model->getRandomString($length,$upperonly);
                     break;
 
            case 'date':
@@ -561,20 +570,14 @@ class mamurTags {
                        $dateSrc=$var['when'];
                     }
                     $dateTime = new DateTime($dateSrc);
-                    print $dateTime->format($format);
+                    return $dateTime->format($format);
                     break;
 
 
          default:
          		//try form tags
-         	    if(mamurClassLoader("system","core","views","formTags")){
-         	    	$formTags=new formTags($this->model,$this);
-         	    	$formTags->tags($tag,$var);
-         	    	
-         	    }
-                foreach($this->model->getTagCallBack() as $callBack){
-                     if($callBack['ref']->$callBack['func']($tag,$var)==true) break;
-                }
+         	   
+              
 
        }
 		

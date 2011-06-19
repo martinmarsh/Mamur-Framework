@@ -1,6 +1,6 @@
-<?php
+<?php 
 /**
- * This file contains the static main model Class - mamurModel
+ * This file contains the main model Class - mamurModel
  *  Licence:
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -49,12 +49,13 @@ class mamurModel {
     protected $locid,$locidAccepted;
     protected $global;
     protected $mamurPluginDir,$mamurBaseDir,$mamurlogDir,$mamurSystemDir;
-    protected $tagCallBack,$urlCallBack,
-            $pageProcessCallBack,$pagePagePrintCallBack,$sessionClearCallBack,
+    protected $urlCallBack,$pageProcessCallBack,$pagePagePrintCallBack,$sessionClearCallBack,
             $serverBaseRequestCallBack;
     protected $datasets,$session,$inSession,$oldSession,$logOutFlag,$tags,$options;
 	protected $lastTableName,$lastDataSetName;
 
+
+	   
 /**
  * Constructor sets up properties according to configuration
  * On first install Sets apiID and Salt
@@ -62,8 +63,11 @@ class mamurModel {
  * logouts and set up user session data
  * @return void
  */ 
-    public function   __construct(){
-       $set=mamurConfig::getInstance()->settings;
+    
+
+public function   __construct(){
+	
+	   $set=mamurConfig::getInstance()->settings;
 
        $this->defaultPageFile=$set->homePage;
        $this->defaultPageExt=$set->pageExt;
@@ -84,8 +88,6 @@ class mamurModel {
        $this->countSerial=0;
        $this->setHostData();
        $this->global=array();
-       $this->tagCallBack=array();
-       $this->namedTagCallBack=array();
        $this->urlCallBack=array();
        $this->pageProcessCallBack=array();
        $this->pagePagePrintCallBack=array();
@@ -119,13 +121,16 @@ class mamurModel {
             $this->session=$this->decrypt($_COOKIE['session'],63,19);
             $this->oldSession=$this->session;
        }
+       if(!isset($this->session['verify']) ){
+           $this->session['verify']=$this->getRandomString(12);
+       } 
+       
        if(!isset($this->session['id'])){
            $this->session['id']=$this->unique_serial().$this->getRandomString(8);
        }
-       if(!isset($this->session['verify'])){
-           $this->session['verify']=$this->getRandomString(12);
-       }
-       if(!isset($this->session['user'])){
+       
+    	
+    	if(!isset($this->session['user'])){
            $this->session['user']['name']='unknown';
            $this->session['user']['id']='';
            $this->session['user']['loggedin']=false;
@@ -1000,21 +1005,6 @@ class mamurModel {
          $cback['func']=$function;
          $this->sessionClearCallBack[]=$cback;
     }
-
-
-
-    public function registerTagFunction(&$ref,$function){
-         $cback['ref']=$ref;
-         $cback['func']=$function;
-         $this->tagCallBack[]=$cback;
-    }
-
-    public function getTagCallBack(){
-        return   $this->tagCallBack;
-    }
-
-
-   
 
     public function registerUrlFunction(&$ref,$function){
          $cback['ref']=$ref;

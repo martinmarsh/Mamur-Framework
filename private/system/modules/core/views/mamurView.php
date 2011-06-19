@@ -22,8 +22,7 @@
  * @releasetag 110
  * @author Martin Marsh <martinmarsh@sygenius.com>
  * @copyright Copyright (c) 2011,Sygenius Ltd  
- * @license http://www.gnu.org/licenses GNU Public License, version 3
- *                   
+ * @license http://www.gnu.org/licenses GNU Public License, version 3                  
  *  					          
  */ 
 
@@ -47,6 +46,9 @@
     public  $contentPageBase;
     protected $oddeven;
     protected $placeHolderClasses;
+    protected $pageBuild;
+    protected $pagePhp;
+    protected $pageBuildId;
 
 
 
@@ -54,6 +56,9 @@
     public function  __construct() {
        $this->oddeven=array();
        $this->placeHolderClasses=array();
+       $this->pageBuild=array();
+       $this->pageBuildId=0;
+       $this->pagePhp='';
     }
 
     //function setController(&$control){
@@ -64,15 +69,14 @@
           $this->model=$model;
           $this->mamur=$model;    //alias for model (allows php inserts to access
                                     //model using $this->mamur (same as plugins)
+                                    
     }
     
    //A modified singleton method for 5.2 since static class cannot be called by variable
     public function getPlaceholder($class) {
-        if (!isset($this->placeHolderClasses[$class])) {
-          
+        if (!isset($this->placeHolderClasses[$class])) { 
            $this->placeHolderClasses[$class]= new $class($this->model,$this);
         }
-
         return $this->placeHolderClasses[$class];
     }
 
@@ -140,10 +144,30 @@
        }
      
        $tagObj=$config->placeholders->$tag;
-       $tagInstance=$this->getPlaceholder($tagObj->class); 
-       $tagMethod=$tagObj->method;
-       $tagInstance->$tagMethod($tag,$var,$isTagNamed,$hasTagFile);
-     
+       
+       if(is_object($tagObj)){
+       		$tagInstance=$this->getPlaceholder($tagObj->class); 
+       		$tagMethod=$tagObj->method;
+       		$tagDefaultMethod=$tagObj->default;
+       
+       	   if($tagMethod!==false && method_exists ( $tagInstance , $tagMethod )){
+	       		$data=$tagInstance->$tagMethod($var,$hasTagFile,$tag);
+	       }elseif(method_exists ( $tagInstance , $tag)){
+	       	    $data=$tagInstance->$tag($var,$hasTagFile,$tag);
+	       }elseif($tagDefaultMethod!==false && method_exists ( $tagInstance , $tagDefaultMethod )){
+	       	    $data=$tagInstance->$tagDefaultMethod($var,$hasTagFile,$tag);
+	       }
+         
+         
+       	   $this->pageBuild[$this->pageBuildId]['tag']=$tag;
+       	   $this->pageBuild[$this->pageBuildId]['var']=$var;
+       	   $id=$this->pageBuildId++;
+       }else{
+       		//Undefined Tag 
+       		@trigger_error("TRACE unknow tag '$tag' found");
+         
+       }
+       return "$data"; 
     }
 
  function metaContentStr($metaName,$metaFields){
@@ -170,8 +194,6 @@
                 default:
                     $others.="$field=\"$val\" ";
                     break;
-
-
              }
 
         }
@@ -223,16 +245,45 @@
            if($this->model->isError404Page()){
               header("HTTP/1.1 404 Not Found");
            }
-
+ 		   $config=mamurConfig::getInstance();
            $this->templateTags=$this->model->getTagData();
            $this->contentPageBase=$this->model->getContentBase();
            $templateFile=$this->model->getTemplateFile();
            $this->pageOutput=file_get_contents($templateFile);
+            $this->processTags($this->pageOutput);
+          // $this->pagePhp=" \nprint  $this->pageBuild[$this->pageBuildId]['data'];\n";  
+          // $this->pageBuild[$this->pageBuildId]['data']=$this->pageOutput;
+       	   $this->pageBuild[$this->pageBuildId]['tag']="pagetemplate";
+       	   $this->pageBuild[$this->pageBuildId]['var']=array('file'=>$templateFile);
+       	  
+       	   //print_r($this->pageBuild);
+       	   $dataArray=serialize($this->pageBuild);
+       	   $page=" \$mamurRawData=<<<herdoc123xyz\n$dataArray\n\nherdoc123xyz;\n\n";
+       	   $page.="\$data=unserialize(\$mamurRawData); ?>";
+       	   $page.=$this->pageOutput;
+       //print $page;	  
+     //eval($page);
+       //	print_r($this->pageBuild);
+          if($config->settings->pageBuild=='yes'){
+	       	  $dir=$config->settings->build.$this->model->getPageDir();
+	       	  if(!is_dir($dir)){
+	       	  	 mkdir($dir, 0777,true);
+	       	  	
+	       	  }
+	       
+	       	  file_put_contents($dir.'/'.$this->model->getPageName().".php",
+	       	    	$this->pageOutput);
+          }
+       	    	
+       	  $this->doPhpAndPrint($this->pageOutput);
+       	   
+       	  
+          $this->pageBuildId++; 
+   }
 
-           $this->processTags($this->pageOutput);
-           $this->doPhpAndPrint($this->pageOutput);
-    }
-
+   public function showBuiltPage($builtFile){
+   		include_once($builtFile);
+   }
     public function includePageFile(){
          //this includes a file (php or html content ect)
          //which is know to exist - This would return a non-templated file
@@ -365,10 +416,10 @@ function mamur_view_replaceTag($matches){
              $pairs=trim($matches[3]);
          }
          if($tagname!=''){
-            ob_start();
-            mamurController::getView()->insertTag($tagname,$pairs);
-            $out= ob_get_contents();
-            ob_end_clean();
+            //ob_start();
+            $out= mamurController::getView()->insertTag($tagname,$pairs);
+            //$out= ob_get_contents();
+            //ob_end_clean();
         }
         return $out;
 
