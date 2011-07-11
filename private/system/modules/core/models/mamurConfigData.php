@@ -84,5 +84,14 @@ class mamurConfigData{
 	
 	}
 	
+    /**
+     * 
+     * allows unset($dataclass->variable) construct
+     * @param unknown_type $variable
+     */
+    public function __unset($variable){
+		unset($this->data[$variable]);
+	
+	}
 	
 }

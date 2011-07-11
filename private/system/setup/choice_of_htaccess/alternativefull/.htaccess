@@ -1,0 +1,86 @@
+#Comment in next line if required by host to assign php5 to .php
+#AddType x-mapp-php5 .php
+
+<IfModule mod_rewrite.c>
+RewriteEngine on
+RewriteBase /
+
+# *****************************************************************
+#   THIS FILE CONDITIONS THE URL TO CORRECT FORMAT AND
+#   maps all html file requets to /mamur/index.php unless
+#   they are in a /wp or  /wordpress directory
+#
+#*****************************************************************
+
+#rewriting www on front of all urls to ensure consistency of domain name
+#comment in next two lines if you do not wish to force www in front of domain
+#name
+#RewriteCond %{HTTP_HOST} !^www [NC]
+#RewriteRule ^(.*)$ http://www.%{HTTP_HOST}/$1 [R=301,L]
+
+
+
+# *** USE ONLY ONE OF THE FOLLOWING 2 RULES TO ENSURE CORRECT HOME PAGE
+#     ie choose to have home page in a format either with or without index.html
+#     only comment in one as they conflict with eachother
+
+#OPTION 1 rewrites home page to index.html
+
+RewriteRule ^$ http://%{HTTP_HOST}/index.html [R=301,L]
+
+#OPTION 2 removes index.html if bookmarked or in link page shows as just /
+#RewriteRule ^index.html$ http://%{HTTP_HOST}/ [R=301,L]
+
+#********* End  of HOME PAGE CHOICE
+
+
+# *** USE ONLY ONE OF THE FOLLOWING 2 RULE PAIRS IS REQUIRED TO ENSURE
+#     /x/ refers to either  '/x/index.html'  or to /x.html.
+#
+#Option 1 rewrites /x/ to '/x/index.html' if you don't want use index.html at end of
+#subdirectories comment out next two lines.
+
+RewriteCond %{REQUEST_URI} !\.[^\./]*$  [NC]
+RewriteRule ^(.*)/$ http://%{HTTP_HOST}/$1/index.html [R=301,L]
+
+#
+#Option 2 rewrites /x/ to '/x.html' then to access an index page you must use
+#/x/index.html in effect index.html is not used by default
+
+#RewriteCond %{REQUEST_URI} !\.[^\./]*$  [NC]
+#RewriteRule ^(.*)/$ http://%{HTTP_HOST}/$1 [R=301,L]
+
+#********* End of SUB DIRECTORY  CHOICE
+
+
+
+#The following line runs the MAMUR for .html and .htm (1st line)
+#files with php extension are not mapped which makes  AJAX  easier (no template used)
+#Excludes templating html files in wp and wordpress directories (comment in 2nd & 3rd line)
+#Any uri not matching all conditions will not be redirected
+
+RewriteCond %{REQUEST_URI} ^([^\.\?]*?)(\.html.*|\.htm.*|[^\.])$ [NC]
+#RewriteCond %{REQUEST_URI} !^/wp/.*$ [NC]
+#RewriteCond %{REQUEST_URI} !^/wordpress/.*$ [NC]
+RewriteRule ^(.*)$ /index.php  [PT,L]
+
+
+</IfModule>
+
+
+#If you do not already have compression set then commnet in the
+#addOutput Filters
+#comment out this section which compresses text, html, javascript, css, xml:
+#AddOutputFilterByType DEFLATE text/plain
+#AddOutputFilterByType DEFLATE text/html
+#AddOutputFilterByType DEFLATE text/xml
+#AddOutputFilterByType DEFLATE text/css
+#AddOutputFilterByType DEFLATE application/xml
+#AddOutputFilterByType DEFLATE application/xhtml+xml
+#AddOutputFilterByType DEFLATE application/rss+xml
+#AddOutputFilterByType DEFLATE application/javascript
+#AddOutputFilterByType DEFLATE application/x-javascript
+
+
+
+

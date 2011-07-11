@@ -43,7 +43,7 @@
      public $templateTags;
     protected $urlDir;
     protected $pageOutput;
-    public  $contentPageBase;
+
     protected $oddeven;
     protected $placeHolderClasses;
     protected $pageBuild;
@@ -81,14 +81,14 @@
     }
 
 
-    public function insertTag($tag,$pairs){
+    public function insertPlaceholder($tag,$pairs){
        $tag=strtolower($tag);
        $config=mamurConfig::getInstance();
 
        //insert Tag executes for each tag and occurs for main page when
        //doPhpAndPrint is called.
        //Pairs are a string of name=data type settings
-       //escape the data inserted into quotes in php insertTag call
+       //escape the data inserted into quotes in php insertPlaceholder call
        $pairs=stripslashes($pairs);  //remove escaped quotes etc
        //extract variable list pairs separated by a space or quoted with " or '
        $var=array();
@@ -122,43 +122,21 @@
           }
 
        }while($loop);
-
-
-       if(isset($var['name']) && isset($var['file'])  ){
-         //if there is tag with a name and file set and then overwrite template file or
-         //create one
-          $this->templateTags[$tag][$var['name']]['file']=$var['file'];
-       }
-       if(isset($var['name']) && isset($var['value'])  ){
-         //if there is tag with a name and file set and then overwrite template file or
-         //create one
-          $this->templateTags[$tag][$var['name']]['value']=$var['value'];
-       }
-       $isTagNamed=false;
-       if(isset($var['name']) && isset($this->templateTags[$tag][$var['name']])){
-            $isTagNamed=true;
-       }
-       $hasTagFile=false;
-       if($isTagNamed && isset($this->templateTags[$tag][$var['name']]['file'])){
-            $hasTagFile=true;
-       }
      
        $tagObj=$config->placeholders->$tag;
        
        if(is_object($tagObj)){
        		$tagInstance=$this->getPlaceholder($tagObj->class); 
-       		$tagMethod=$tagObj->method;
+       		$tagMethod=$tagObj->action;
        		$tagDefaultMethod=$tagObj->default;
        
        	   if($tagMethod!==false && method_exists ( $tagInstance , $tagMethod )){
-	       		$data=$tagInstance->$tagMethod($var,$hasTagFile,$tag);
+	       		$data=$tagInstance->$tagMethod($var,$tag);
 	       }elseif(method_exists ( $tagInstance , $tag)){
-	       	    $data=$tagInstance->$tag($var,$hasTagFile,$tag);
+	       	    $data=$tagInstance->$tag($var,$tag);
 	       }elseif($tagDefaultMethod!==false && method_exists ( $tagInstance , $tagDefaultMethod )){
-	       	    $data=$tagInstance->$tagDefaultMethod($var,$hasTagFile,$tag);
-	       }
-         
-         
+	       	    $data=$tagInstance->$tagDefaultMethod($var,$tag);
+	       }   
        	   $this->pageBuild[$this->pageBuildId]['tag']=$tag;
        	   $this->pageBuild[$this->pageBuildId]['var']=$var;
        	   $id=$this->pageBuildId++;
@@ -226,7 +204,7 @@
 
    public function directPhpView(){
             $base=$this->model->getPhpBase();
-            $file=$this->model->getPageDir().'/'.$this->model->getPageFile().'.php';
+            $file=$this->model->getPageDir().'/'.$this->model->getPageName().'.php';
             $file=$this->model->relativeDir($base,$file);
             if(file_exists($file)){
                $file=file_get_contents($file);
@@ -247,10 +225,11 @@
            }
  		   $config=mamurConfig::getInstance();
            $this->templateTags=$this->model->getTagData();
-           $this->contentPageBase=$this->model->getContentBase();
+
+           
            $templateFile=$this->model->getTemplateFile();
            $this->pageOutput=file_get_contents($templateFile);
-            $this->processTags($this->pageOutput);
+           $this->pageOutput=$this->processPlaceholders($this->pageOutput);
           // $this->pagePhp=" \nprint  $this->pageBuild[$this->pageBuildId]['data'];\n";  
           // $this->pageBuild[$this->pageBuildId]['data']=$this->pageOutput;
        	   $this->pageBuild[$this->pageBuildId]['tag']="pagetemplate";
@@ -284,7 +263,112 @@
    public function showBuiltPage($builtFile){
    		include_once($builtFile);
    }
-    public function includePageFile(){
+   
+   public function doPhpPlaceholder($serparams){
+   	    $params=unserialize($serparams);
+   	    
+   		$base=$this->model->getPhpBase();
+    	$ret="";
+        $file='';
+    	if(isset($params['name'])){
+            $file=$this->model->relativeDir($base,$params['name'].'.php');
+        }
+        if(file_exists($file)){
+        	include_once($file);
+        }
+   }
+   
+   
+   /**
+    * 
+    * This method dynamically replaces a 'tag' type
+    * palceholder with content which hasd previously saved
+    * in the tag. The content can have other tags inside
+    * which even will be inserted dynamically. This could
+    * give rise to inconsistency if same content is inserted
+    * both dynamically and statically (eg a shared content
+    * tag is referred to in body and in a 'tag' content and
+    * the configuation pageBuild is set to yes.
+    * @param unknown_type $serparams
+    */
+   protected function doTagPlaceholder($serparams){
+   		$var=unserialize($serparams);
+      	$tagName='tag';
+      	$index=0;
+      	if(isset($var['name'])){
+        	$tagName=$var['name'];
+      	}
+      	if(isset($var['index'])){
+          	$index=$var['index'];
+      	}
+		$toprint=$this->model->getTag($tagName,$index);
+		print $toprint; //$this->view->processPlaceholders($toprint); 
+    }
+    
+ 	
+	protected function doGlobalPlaceholder($serparams){
+   		$param=unserialize($serparams);
+		if(isset($param['name'])){
+             print $this->model->getGlobal($param['name']);
+        }
+	}
+    
+    public function  doRandomPlaceholder($serparams){
+    	$param=unserialize($serparams);
+    	$length=6;
+        $upperonly=false;
+        if(isset($param['length'])){
+           $length=$param['length'];
+        }
+        if(isset($param['upper_only'])){
+        	$length=true;
+        }
+        print $this->model->getRandomString($length,$upperonly);                 
+
+	}
+	
+    public function  doUniqueSerialPlaceholder(){
+		print $this->model->unique_serial();
+	}
+	
+	public function doNoncePlaceholder($serparams){
+    	$param=unserialize($serparams);
+    	$length=16;
+        if(isset($param['length'])){
+        	$length=$param['length'];
+        }
+        $useVar='default';
+        if(isset($param['name'])){
+        	$useVar=$param['name'];
+        }
+        print $this->model->setNonce($useVar,$length);
+	 }
+	 
+  	public function doDatePlaceholder($serparams){
+  		$param=unserialize($serparams);
+    	$format="r";
+        $dateSrc="now";
+        if(isset($param['format'])){
+             $format=$param['format'];
+        }
+        if(isset($param['when'])){
+             $dateSrc=$param['when'];
+       	}
+        $dateTime = new DateTime($dateSrc);
+         print $dateTime->format($format);
+    }
+	 
+	public function dopage_timermsPlaceholder(){
+          print $this->model->pageTime();
+    } 
+	 
+ 	public function dopage_pageTimerPlaceholder(){
+        $pagetime=$this->model->pageTime(true);
+        if($pagetime!==false){
+        	print "<br>page Time {$pagetime} ms<br>";                
+        }
+	}
+	 public function includePageFile(){
          //this includes a file (php or html content ect)
          //which is know to exist - This would return a non-templated file
          //and might occur if there is no _page.xml but there is a standard html
@@ -363,7 +447,7 @@ their error page instead -->
     }
 
 
-    public function doPhpAndPrint(&$input){
+    public function doPhpAndPrint($input){
         eval('?>'.$input);
 
     }
@@ -371,7 +455,7 @@ their error page instead -->
 
 
     //this is a bit messy since our call back has to call out of class.
-    public function  processTags(&$textData){
+    public function  processPlaceholders($text){
 
       /*   Tags are between <?mamur: :?> are invisible if the content is viewed
            in an html editor and will passes W3D validation if used in templates
@@ -387,8 +471,10 @@ their error page instead -->
         $textData= ob_get_contents();
         ob_end_clean();  */
     	
-        $textData= preg_replace_callback('@(<\?mamur:([a-zA-Z0-9_\-]*)(.*?)(?=(:\?>)):\?>)|(\[\?(mamur)?:([a-zA-Z0-9_\-]*)(.*?)(?=(:\?\])):\?\])@smx',
-                      'mamur_view_replaceTag',$textData);
+        $replacedTags= preg_replace_callback('@(<\?mamur:([a-zA-Z0-9_\-]*)(.*?)(?=(:\?>)):\?>)|(\[\?(mamur)?:([a-zA-Z0-9_\-]*)(.*?)(?=(:\?\])):\?\])@smx',
+                      'mamurViewReplacePlaceholder',$text);
+        
+        return $replacedTags;
 
      }
 
@@ -403,7 +489,7 @@ their error page instead -->
  * @param $matches
  * @return unknown_type
  */
-function mamur_view_replaceTag($matches){
+function mamurViewReplacePlaceholder($matches){
 
          $pairs='';
          $tagname='';
@@ -417,7 +503,7 @@ function mamur_view_replaceTag($matches){
          }
          if($tagname!=''){
             //ob_start();
-            $out= mamurController::getView()->insertTag($tagname,$pairs);
+            $out= mamurController::getView()->insertPlaceholder($tagname,$pairs);
             //$out= ob_get_contents();
             //ob_end_clean();
         }

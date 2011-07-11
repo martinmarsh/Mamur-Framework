@@ -1,0 +1,1 @@
+a:3:{s:4:"data";a:1:{s:7:"default";a:0:{}}s:6:"verify";s:12:"QQUC87IKSeNI";s:4:"time";i:1305247723;}

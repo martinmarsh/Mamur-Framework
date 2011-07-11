@@ -39,7 +39,7 @@ class mamurModel {
     //protected $view;
     protected $webBaseDir,$pageURL,$mamurURL;
     protected $xmlPageType,$phpParameters;
-    protected $defaultPageFile,$defaultPageExt,$pageQuery,$pageFile,$pageDir,$pageDirList,$pageExt;
+    protected $defaultPageName,$defaultPageExt,$pageQuery,$pageName,$pageDir,$pageDirList,$pageExt;
     protected $themesDir;
     protected $templateTags;
     protected $error404PageName;
@@ -50,9 +50,9 @@ class mamurModel {
     protected $global;
     protected $mamurPluginDir,$mamurBaseDir,$mamurlogDir,$mamurSystemDir;
     protected $urlCallBack,$pageProcessCallBack,$pagePagePrintCallBack,$sessionClearCallBack,
-            $serverBaseRequestCallBack;
-    protected $datasets,$session,$inSession,$oldSession,$logOutFlag,$tags,$options;
-	protected $lastTableName,$lastDataSetName;
+              $serverBaseRequestCallBack;
+    protected $dataObjects,$session,$inSession,$oldSession,$logOutFlag,$tags,$options;
+	
 
 
 	   
@@ -66,10 +66,10 @@ class mamurModel {
     
 
 public function   __construct(){
-	
-	   $set=mamurConfig::getInstance()->settings;
+	   $config=mamurConfig::getInstance();
+	   $set=$config->settings;
 
-       $this->defaultPageFile=$set->homePage;
+       $this->defaultPageName=$set->homePage;
        $this->defaultPageExt=$set->pageExt;
        $this->webBaseDir=$set->root;      //Base directory of web site
 
@@ -86,7 +86,7 @@ public function   __construct(){
        $this->xmlPageType=false;
        $this->error404PageName="errornotfound";
        $this->countSerial=0;
-       $this->setHostData();
+       $this->setHostData($set->host);
        $this->global=array();
        $this->urlCallBack=array();
        $this->pageProcessCallBack=array();
@@ -94,25 +94,26 @@ public function   __construct(){
        $this->sessionClearCallBack=array();
        $this->sessionLogoutCallBack=array();
        $this->serverBaseRequestCallBack=array();
-       $this->datasets=null;
+       $this->dataObjects=null;
        $this->tags=array();
        $this->options=array();
        $this->phpParameters=array();
-       $this->lastDataSetName='default';
-       $this->lastTableName='default';
+     
 
        $update=false;
        if($set->salt=='new'){
-          $this->setConfig('salt','new');
+          $set->salt=$this->getRandomString(117);
+          $config->persistSetting('salt',$set->salt);
           $update=true;
        }
        if($set->apiId=='new'){
-           $this->setConfig('apiId',$this->unique_serial());
+       	   $set->apiId=$this->unique_serial();
+       	   $config->persistSetting('apiId',$set->apiId);
            $update=true;
        }
 
        if($update){
-           $this->upDateConfigFile();
+           $config->upDateConfig();
        }
        $this->session=array();
        $this->inSession=false;
@@ -250,9 +251,9 @@ public function   __construct(){
         return $ret;
      }
      
-     
+ //xxxx    
      /**
-      * Places a directory list in a dataset
+      * Places a directory list to a dataObject
       * @param $dSet
       * @param $listArray
       * @param $datasetName
@@ -260,7 +261,7 @@ public function   __construct(){
       * @return unknown_type
       */
 
-     public function dirListToDataSet(&$dSet,$listArray,$datasetName,$table='default'){
+     public function dirListToDataSet(&$dSet,$listArray,$dataObjectName,$table='default'){
        //  $dSet['table'][$table]=array();
          $row=&$dSet['table'][$table];
          $field=array();
@@ -318,7 +319,7 @@ public function   __construct(){
     }
     
 	/**
-	 * Persists configustaion settings by Updating  the xml file
+	 * Saves configustaion settings by Updating  the xml file
 	 * @return void
 	 */
     public function upDateConfigFile(){
@@ -326,14 +327,14 @@ public function   __construct(){
     }
 
     /**
-     * Sets page url and associated internal varaibles using the value of the url parameter passed.
-     * the url would normally be the url from the web server ie the current page.
-     * @param $url
+     * Sets page uri and associated internal varaibles using the value of the url parameter passed.
+     * the URI would normally be from the web server ie the current page.
+     * @param $uri
      * @return unknown_type
      */
-    public function setPageUrl($url){
-        $this->pageURL=$url;
-        $checkREQUEST_URI= strip_tags(urldecode($url));
+    public function setPageUri($uri){
+        $this->pageURL=$uri;
+        $checkREQUEST_URI= strip_tags(urldecode($uri));
         $parmpos=strpos($checkREQUEST_URI,"?");
         if($parmpos!==false){
             $this->pageQuery=substr($checkREQUEST_URI,$parmpos);
@@ -341,24 +342,24 @@ public function   __construct(){
         }
 
         if( substr($checkREQUEST_URI,-1)=='/'){
-             $this->pageFile=$this->defaultPageFile;
+             $this->pageName=$this->defaultPageName;
              $this->pageExt='.'.$this->defaultPageExt;
              $this->pageDir=substr($checkREQUEST_URI,0,-1);
 
         }else{
-            $this->pageFile=basename($checkREQUEST_URI);
-            $this->pageExt= strrchr ( $this->pageFile, '.' );
+            $this->pageName=basename($checkREQUEST_URI);
+            $this->pageExt= strrchr ( $this->pageName, '.' );
             $this->pageDir=dirname($checkREQUEST_URI);
         }
 
 
-        if($this->pageFile=='' ){
-            $this->pageFile=$this->defaultPageFile;
+        if($this->pageName=='' ){
+            $this->pageName=$this->defaultPageName;
         }
         if($this->pageExt==''){
                 $this->pageExt='.'.$this->defaultPageExt;
         }
-        $this->pageFile=basename($this->pageFile,$this->pageExt);
+        $this->pageName=basename($this->pageName,$this->pageExt);
         $this->pageExt=substr($this->pageExt,1);
 
         $this->pageDir=str_replace('\\','/',$this->pageDir);
@@ -375,10 +376,8 @@ public function   __construct(){
         }
         //now process page url plugins which can re-map urls
         foreach($this->urlCallBack as $callBack){
-                $callBack['ref']->$callBack['func']($this->pageDir,$this->pageFile,$this->pageExt,$this->pageDirlist);
+                $callBack['ref']->$callBack['func']($this->pageDir,$this->pageName,$this->pageExt,$this->pageDirlist);
         }
-
-
     }
     
     /**
@@ -495,7 +494,7 @@ public function   __construct(){
     /**
      * get page edit status
      * @param $status
-     * @return unknown_type
+     * @return void
      */
     public function getEditStatus($status=false){
         return $this->session['page']['edit'];
@@ -504,14 +503,24 @@ public function   __construct(){
     /**
      * Sets page edit status
      * @param $status
-     * @return unknown_type
+     * @return void
      */
     public function setEditStatus($status=false){
          $this->session['page']['edit']=$status;
     }
+    
+    
+    /**
+     * 
+     * Looks at the a domain name (normally the host for current server)
+     * and sets model attributes realating to various parts of the domain
+     * name
+     * @param $host - domain name
+     * @return void
+     */
 
-    public function setHostData(){
-            $hostparts=explode('.',str_replace('www.','',strtolower($_SERVER["HTTP_HOST"])));
+    public function setHostData($host){
+            $hostparts=explode('.',str_replace('www.','',strtolower($host)));
 
             $this->hostScheme='http';
 
@@ -542,15 +551,42 @@ public function   __construct(){
             }
     }
 
+   /**
+    * 
+    * Gets a 32 byte salt by concatinating two 16 byte strings from 
+    * the configuration salt string. Each installation will have a unique
+    * salt and unless re-insatlled the salt will always remain the same
+    * Allowing it to be used for encryption of long lived resources.
+    * To allow different salts to be defined there is an option to give
+    * two integers are supplied to identify the salt required.
+    * This method also makes it les obvoius to see the salts by looking at the
+    * configuration file
+    * @param integer $a  - value from 0 to 99 (optional defaults to 84)
+    * @param integer $b  - value from 0 to 99 (optional defaults to 11)
+    * @return 32byte salt string
+    */
     protected function getSalt($a=84,$b=11){
           return  substr(mamurConfig::$config['salt'],$a,16).substr(mamurConfig::$config['salt'],$b,16);
     }
 
+    /**
+     * 
+     * Gets an Api salt in a similar way to getSalt
+     * @return 16byte salt for use with Api
+     */
     public function getApiSalt(){
        return  substr(mamurConfig::$config['salt'],7,10).substr(mamurConfig::$config['salt'],93,6);
     }
 
-
+	/**
+	 * 
+	 * Decytpt a String using rijndael-256 and optionally
+	 * 2 security integers to identify the salt to use
+	 * @param string $value - base64 encoded 256bit encypted data
+	 * @param integer $a
+	 * @param integer $b
+	 * @return Decypted string
+	 */
     public function decrypt($value,$a=54,$b=16){
         $dataArray=array();
         if($value!=''){
@@ -567,6 +603,15 @@ public function   __construct(){
         return $dataArray;
     }
 
+    /**
+	 * 
+	 * encrypt a String using rijndael-256 and optionally
+	 * 2 security integers to identify the salt to use
+	 * @param string $value 
+	 * @param integer $a
+	 * @param integer $b
+	 * @return encrypted string base64_encoded
+	 */  
     public function encrypt($dataArray,$a=54,$b=16){
         $td = mcrypt_module_open('rijndael-256', '', 'cbc', '');
         $iv = mcrypt_create_iv (mcrypt_enc_get_iv_size($td), MCRYPT_RAND);
@@ -578,6 +623,16 @@ public function   __construct(){
         mcrypt_module_close($td);
         return  base64_encode(serialize($data));
     }
+    
+    
+    /**
+     * 
+     * Gets a random string of Letters and numbers of
+     * specified length with option to return uppercase
+     * only
+     * @param integer $length
+     * @param bool $upperonly
+     */
 
     public function getRandomString($length,$upperonly=false){
         $string='';
@@ -604,7 +659,10 @@ public function   __construct(){
     }
 
 
-
+    /**
+     * 
+     * Generates a cookie unique serial number
+     */
     public function getCookieSerialNo(){
             $userip=$this->GetUserIP();
             $ipparts=explode(".",$userip);
@@ -616,6 +674,9 @@ public function   __construct(){
             return $serialno.sprintf('%02X',$iplast);
     }
 
+    /**
+     * Gets best value for user IP address
+     */
     public function GetUserIP(){
         $userip=$_SERVER['REMOTE_ADDR'];
         if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])){
@@ -626,9 +687,15 @@ public function   __construct(){
         return  $userip;
      }
 
-     //generates a unique serial number based on date,microtime, call count and
-     //a random number so there is very low risk of duplication in moderately
-     //busy systems
+    
+     /**
+      * 
+      * generates a unique serial number based on date,microtime, call count and
+      * a random number so there is very low risk of duplication in moderately
+      * busy systems. 
+      * The number may be used externally and vowels are mamped out to prevent
+      * spelling of words which would look unprofessional
+      */
     public function unique_serial(){
          $time=time();
          $this->countSerial++;
@@ -644,6 +711,15 @@ public function   __construct(){
          return $ret;
     }
 
+    /**
+     * 
+     * Sets a cookie to help identify a users at a location
+     * Cookies will be set according to machine and account
+     * This is approxiamte as acounts may be shared and users may use more
+     * than 1 machine at a location. Each mobile device is assumed
+     * to be a different "location"
+     * 
+     */
     public function setLocidCookie(){
         $alldomains='.';
         if( $this->hostdomain!=''){
@@ -658,6 +734,14 @@ public function   __construct(){
         setcookie("locid", $this->locid, time()+315360000,"/", $alldomains,FALSE,TRUE);
     }
 
+    /**
+     * 
+     * Sets an encrypted session based cookie which contains the
+     * session data stored in $this->session array
+     * Any pointers to session files are therefore encypted
+     * The session cookie can be changed without affecting the
+     * data
+     */
      public function setSessionCookie(){
         $alldomains='.';
         if( $this->hostdomain!=''){
@@ -683,7 +767,7 @@ public function   __construct(){
 
     public function readPageXML(){
      //now process page Process url plugins which redirect page processing
-      $xmlPagefile="{$this->getServerBase()}/pages{$this->pageDir}/{$this->pageFile}_html/page.xml";
+      $xmlPagefile="{$this->getServerBase()}/pages{$this->pageDir}/{$this->pageName}_html/page.xml";
       if(file_exists($xmlPagefile)){
           $this->xmlPageType=true;
       }
@@ -759,7 +843,7 @@ public function   __construct(){
 
     public function isError404Page(){
          $error404Page=false;
-         if($this->pageFile==$this->error404PageName){
+         if($this->pageName==$this->error404PageName){
                      $error404Page=true;
          }
          return  $error404Page;
@@ -778,15 +862,12 @@ public function   __construct(){
 
 
     public function getNonMamurPage(){
-         return  "{$this->webBaseDir}{$this->pageDir}/{$this->pageFile}.{$this->pageExt}";
+         return  "{$this->webBaseDir}{$this->pageDir}/{$this->pageName}.{$this->pageExt}";
     }
 
-    public function getPageFile(){
-        return $this->pageFile;
-    }
-    //more friendly alais of getPageFile
+  
      public function getPageName(){
-        return $this->pageFile;
+        return $this->pageName;
     }
     
     public function getPageExt(){
@@ -806,7 +887,7 @@ public function   __construct(){
     }
 
     public function getContentBase($subdir=''){
-        return $this->relativeDir("{$this->getServerBase()}/pages{$this->pageDir}/{$this->pageFile}_html/",$subdir);
+        return $this->relativeDir("{$this->getServerBase()}/pages{$this->pageDir}/{$this->pageName}_html/",$subdir);
     }
 
     public function getPhpBase($subdir=''){
@@ -844,8 +925,129 @@ public function   __construct(){
     public function getPluginDir($subdir=''){
        return $this->relativeDir($this->mamurPluginDir,$subdir);
     }
+    
+    /**
+     * Gets Page Specific Content by name
+     * @param string $name - of content eg main
+     * @return string  - content
+     */
+    public function getPageContent($name){
+        $base=$this->getContentBase();
+        if(substr($name,-5)!='.html'){
+        	$name.='.html';
+        }
+        $file=$this->relativeDir($base,$name);
+        $content=null;
+        if(file_exists($file)){
+             $content=file_get_contents($file);
+        }
+        return $content;
+    }
 
 
+   /**
+     * Gets Shared Content by name, type and by optional group and mapping
+     * group use directory notation to add aditional classification to a type
+     * of content eg articles could be divided by year and month eg the
+     * group would be year/month
+     * mapping allows the name to be expanded according to a uri or post value.
+     * the name is appended by an additional map value separated by an underscore
+     * mapping can be byFirstSection, byLastSection, byPage, byGet or byPost
+     * section refers to the portion between the / in the uri eg
+     * /firstsection/middlesection/lastsection/anypagename
+     * if pagename is omitted index is assumed. The first and lastsections can be
+     * the same or null if empty in which case just the name of the content without @author sygenius
+	 * underscore separator is used.
+	 * Post or Get variables use the same name as the content type eg ?article=1 
+     * 
+     * @param string - name of content eg main
+     * @type string  - type of content eg article, blog, menu etc
+     * @group string - optional; group
+     * @mapped string - optional; mapping to different content files
+     * @return string  - content
+     */
+    public function getSharedContent($name,$type,$group="",$mapped=""){
+    	if(strlen($name>5)){
+	    	if(substr($name,-5)!='.html'){
+	        	$name=substr($name,0,-5);
+	        }
+    	}
+        $base=$this->getSharedContentBase($type);
+        if(!empty($mapped)){
+        	//bysection assumed
+            if($mapped=="byFirstSection"){
+        		$section=array_shift($this->getPageDirList());
+            }elseif($mapped=="byLastSection"){
+            	$section=array_pop($this->getPageDirList());
+            }elseif($mapped=="byPage"){
+            	$section=$this->getPageName();
+            	if($section==index){
+            		$section="";
+            	}
+            }elseif($mapped=="byGet" && isset($_GET[$type]) ){
+            	$section=htmlentities($_GET[$type]);
+            }elseif($mapped=="byPost" && isset($_POST[$type]) ){
+            	$section=htmlentities($_POST[$type]);
+            }else{
+            	//firePhp error report
+            	@trigger_error("Unknown mapped request '$mapped' in content tag");
+            	$section="_unknownmapping";
+            }
+        	if(!empty($section)){
+        		$name.="_".$section;
+        		
+        	} 
+        	  	
+        }
+        $fileBase=$this->relativeDir($base,$group);
+     	
+        $file=$this->relativeDir($fileBase,$name.'.html');
+        $content=null;
+        if(file_exists($file)){
+             $content=file_get_contents($file);
+        }else{
+        	//firePhp error report
+        	@trigger_error("$type Content tag refers to unknown content $name");
+        }
+        return $content;
+    }
+    
+    /**
+     * Gets a list of content names give a search pattern for a name
+     * use '*' to match a sub string in the name part eg
+     * * returns all files and n*x returns files starting with n
+     * and ending in x
+     * file extension .html is optional although generally
+     * one should not be given
+     * @param unknown_type $contType
+     * @param unknown_type $match
+     */
+ 	public function getContentList($contType,$match){
+ 		if(strlen($match>5)){
+	    	if(substr($match,-5)!='.html'){
+	        	$match=substr($match,0,-5);
+	        }
+    	}
+	 	if($contType=='page'){
+        	$base=$this->contentPageBase;
+       	}else{
+            $base=$this->model->getSharedContentBase("/{$contType}");
+       	} 
+	 	$filelist=glob($this->relativeDir($base,$match.".html"));
+	 	
+	 }
+    
+    /**
+     * 
+     * relativeDir extends a directory reference by adding and additional string
+     * the additional string can be a subdirectory or page name.
+     * The directory may end with an optional / character
+     * The additional string may start with an optional / character
+     * relative directory ensures that a / is added between and that // cannot occur
+     * @param string directory reference
+     * @param stringe additional directory or page name to append to directory reference
+     */
+     
     public function relativeDir($dir,$subdir){
       if($subdir==''){
          $ret=$dir;
@@ -900,10 +1102,11 @@ public function   __construct(){
     }
 
     public function getGlobal($name){
-        if(isset(mamurConfig::$globalSet[$name])){
-            return  mamurConfig::$globalSet[$name];
+    	$global=mamurConfig::getInstance()->globals;
+        if(isset($global->$name)){
+            return  $global->$name;
         }else{
-            return "[undefined gobal $name /]";
+            trigger_error("trying to get an unknown Global $name");
         }
     }
 
@@ -915,7 +1118,7 @@ public function   __construct(){
    public function pageProcessHookContinue(){
         $continue=true;
         foreach($this->pageProcessCallBack  as $callBack){
-               $continue=$continue && $callBack['ref']->$callBack['func']($this->xmlPageType,$this->templateTags,$this->pageDir,$this->pageFile,$this->pageExt,$this->pageDirlist);
+               $continue=$continue && $callBack['ref']->$callBack['func']($this->xmlPageType,$this->templateTags,$this->pageDir,$this->pageName,$this->pageExt,$this->pageDirlist);
         }
         return $continue;
     }
@@ -928,14 +1131,14 @@ public function   __construct(){
     public function doPagePagePrintCallBacks(){
         $continue=true;
         foreach($this->pagePagePrintCallBack  as $callBack){
-               $continue=$continue && $callBack['ref']->$callBack['func']($this->xmlPageType,$this->templateTags,$this->pageDir,$this->pageFile,$this->pageExt,$this->pageDirlist);
+               $continue=$continue && $callBack['ref']->$callBack['func']($this->xmlPageType,$this->templateTags,$this->pageDir,$this->pageName,$this->pageExt,$this->pageDirlist);
         }
         return $continue;
 
     }
 
     public function setErrorPageTemplate(){
-         $this->setPageUrl("/{$this->error404PageName}.html");
+         $this->setPageUri("/{$this->error404PageName}.html");
          $this->readPageXML();
 
     }
@@ -1073,26 +1276,25 @@ public function   __construct(){
         return $this->hostScheme.'://'.$_SERVER["HTTP_HOST"];
     }
 
-    public function setNonce($name='default',$length=16){
-        $data[$name]=$this->getRandomString($length);
-        $this->setDataSet('mamur_nonce',$data);
-        return $data[$name];
+    public function setNonce($name='mamurData',$length=16){
+    	$data=$this->getDataObject($name);
+    	$nonce=$this->getRandomString($length);
+        $data->mamurNonce=$nonce;
+        return $nonce;
     }
 
-    public function getNonce($name='default'){
-        $nonce=$this->getDataSet('mamur_nonce');
-        return $nonce[$name];
+    public function getNonce($name='mamurData'){
+        return $this->getDataObject($name)->mamurNonce;
     }
 
-    public function getDataSet($name){
-        if(!is_array($this->datasets)){
-            $this->readDataSets();
+    public function getDataObject($name){
+        if(!is_array($this->dataObjects)){
+            $this->readDataObjects();
         }
-        if(is_array($this->datasets) && isset($this->datasets['data'][$name]) ){
-            return  $this->datasets['data'][$name];
-        }else{
-            return array();
-        }
+    	if(!isset($this->dataObjects[$name])){
+    		$this->dataObjects[$name]=new mamurDataObject();
+    	}
+    	return $this->dataObjects[$name];
     }
 
     public function verifyDataSets(){
@@ -1106,7 +1308,7 @@ public function   __construct(){
         }
     }
 
-    public function readDataSets(){
+    public function readDataObjects(){
         $file="{$this->mamurUserDir}/databases/mamur_datasets/{$this->session['id']}.txt";
         if(file_exists($file)){
            $this->datasets=unserialize(file_get_contents($file));

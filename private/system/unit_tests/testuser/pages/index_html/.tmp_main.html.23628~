@@ -1,0 +1,54 @@
+<div  class="grid_3 alpha">
+ <div class="leftSideBox">
+      <a href="/weddings" accesskey="5" title="Go to the Wedding Section">
+      <img src="/images/index/wedding_box_img.jpg" title="Link to the Wedding Section" alt="Link to the Wedding Section" border="0" /></a>
+      <p>Our attention to detail will ensure you'll have a wonderful day.</p>         
+      <a href="/weddings" accesskey="5" title="Go to the Wedding Section"><img src="/images/index/box_button.jpg" 
+      alt="Go to the Wedding Section"  border="0" title="Go to the Wedding Section" /></a>
+</div>
+<div class="leftSideBox">
+    <a href="private-events" accesskey="4" title="Go to the Private Events Page">
+    <img src="/images/index/private_events.jpg" alt="Link to the Private EventsPage" border="0" title="Link to the Private Events Page" /></a>
+    <p>We can also cater for small to large private events; personalised to your requirements</p>          
+    <a href="private-events" accesskey="4" title="Go to the Private EventsPage">
+    <img src="/images/index/box_button.jpg"  alt="Go to the Private Events Page" border="0" 
+    title="Go to the Private Events Page" /></a>
+</div>      
+</div>
+
+<div class="grid_6" >
+<div id="content_body">
+<h1>Welcome to Ardington House</h1>
+<p class="goldBold">Ardington House has always been full of interesting people from all parts of the world and is renowned for its warm welcome and traditional hospitality.</p>
+<p>I am delighted on behalf of my family to be able to offer this unique facility to all our clients who feel that the house and its beautiful grounds, gardens and lakes are suitable for their own requirements.</p>
+<p>We are dedicated to ensuring that the needs of every one of our guests are carefully looked after. </p>
+<p><img src="/images/index/signiture.gif" alt="Nigel Baring signiture" title="Nigel Baring signiture" /><br />
+<strong>Nigel Baring</strong> - 1st Jan 2011</p>
+</div>
+
+<div  class="grid_6 alpha omega">
+<div id="readon">
+<p><a href="/history">....read about our history</a></p>
+</div>
+</div>
+
+</div>
+
+<div  class="grid_3 omega">
+<div class="rightSideBox">
+    <a href="business-events" accesskey="4" title="Go to the Business and Corparate Events Page">
+    <img src="/images/index/business_events.jpg" alt="Link to the Business and Corporate Events Page" border="0" title="Link to the Corporate Events Page" /></a>
+    <p>We provide a private and secluded setting for your business or team.</p>            
+    <a href="business-events" accesskey="4" title="Go to the Business and Corporate Events Page">
+    <img src="/images/index/box_button.jpg"  alt="Go to the Business and Corporate Events Page" border="0" 
+    title="Go to the Business and Corporate Events Page" /></a>
+    </div>
+    <div class="rightSideBox">
+    <a href="conference-rooms" accesskey="4" title="Find out about hiring our Conference Rooms">
+    <img src="/images/index/conference_rooms.jpg" alt="Link to the Corporate Events Page" border="0" title="Link to the Corporate Events Page" /></a>
+    <p>We provide a private and secluded setting for your business or team.</p>           
+    <a href="corporate_events.html" accesskey="4" title="Find out about hiring our Conference Rooms">
+    <img src="/images/index/box_button.jpg"  alt="Find out about hiring our Conference Rooms" border="0" 
+    title="Find out about hiring our Conference Rooms" /></a>
+    </div>
+</div>

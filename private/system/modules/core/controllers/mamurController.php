@@ -119,7 +119,7 @@ abstract class mamurController{
     	//by a plugin
     	self::$model->checkLogOut();
     	//sets up the page url
-    	self::$model->setPageUrl($uri);
+    	self::$model->setPageUri($uri);
 
     	//A plugin via this hook can pre-process urls or can trap them and do all processing
     	//itself.
@@ -138,8 +138,6 @@ abstract class mamurController{
           	  $builtFile=$config->settings->build.self::$model->getPageDir().'/'.self::$model->getPageName().".php";
           	  if($config->settings->pageBuild=='yes' && file_exists($builtFile)){
           	  	self::$view->showBuiltPage($builtFile);
-          	  	print "<br/>page re-load = ";
-          	  	print self::$model->pageTime();
           	  }else{
 	  
 	        	  //for page templating

@@ -1,0 +1,21 @@
+<div class="grid_6 alpha">
+<div id="content_body">[?:page_content name=aboutweddings :?]</div>
+</div>
+
+<div class="grid_6 omega">
+<div id="rightContentBody">
+<h4>Your Wedding</h4>
+<p>To read more about a topic please scroll down and click on a title</p>
+<div id="accordion">
+[?:article name=reception :?]
+[?:article name=ceremony :?]
+[?:article name="wedding_coordination" :?]
+[?:article name=catering :?]
+[?:article name=winesandchampagnes :?]
+[?:article name=photography :?]
+[?:article name=accommodation :?]
+[?:article name=platinumdrinks :?]
+[?:article name=golddrinks :?]
+</div>
+</div>
+</div>

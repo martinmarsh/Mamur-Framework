@@ -252,6 +252,10 @@ class mamurConfig{
 	
 	}
 	
+	
+	
+	
+	
 	/**
 	 * Sets up typical configuration of Group with Tags containing only attributes
 	 * @param $group - outer containing tag eg settings
@@ -373,7 +377,7 @@ class mamurConfig{
 	 * @return void 
 	 */
 
-	public static function setPlugIn($name='',$status,$file,$version=''){
+	public function setPlugIn($name='',$status,$file,$version=''){
 	        $pluginArray=self::$data['plugins']->get($name);
 	        if(empty($pluginArray))$pluginArray=array();
 	        $pluginArray['file']=$file;
@@ -403,49 +407,43 @@ class mamurConfig{
 	      }
 	    }
 
-	public static function setConfig($name='',$value=''){
-	    if($name=='salt' && $value=='new'){
-	            $value=self::getRandomString(117);
-	       }elseif($name=='salt'){
-	          //for security do not allow salt to be set to a known value
-	           $name='';
-	    }
-	    if($name!=''){
-	          
-	           self::$data['settings']->$name=$value;
+	/**
+	 * 
+	 * Persists to the XML config data a setting value
+	 * The data is not saved unless upDateConfig is called
+	 * Name must be defined and if apiId or salt is set then
+	 * for security the XML file must have a value set to new
+	 * ie must not have been set before 
+	 * @param $name  - name of setting
+	 * @param $value - value to persist
+	 */    
+	public function persistSetting($name='',$value=''){
+	    if($name!=''){ 	           
 	           $xpath = new DOMXPath(self::$configXML);
 	           $setList=$xpath->query("/configuration/settings/set[@$name]");
 	           if($setList->length>0){
-	                $setList->item(0)->setAttribute($name, $value);
+	           	    if (($name!='apiId' && $name!='salt') ||
+	           	        $setList->item(0)->getAttribute($name)=='new'){
+	           	     	self::$data['settings']->$name=$value;
+	                	$setList->item(0)->setAttribute($name, $value);
+	           	     }else{
+	           	     	//for security silent failure visible only if fireBug is running
+	           	     	@trigger_error("Once set you cannot change the setting $name");
+	           	     }
 	           }else{
 	               $element = self::$configXML->createElement('set');
 	               $section=  self::$configXML->getElementsByTagName('settings')->item(0);
 	               $newnode = $section->appendChild($element );
 	               $newnode->setAttribute($name,$value);
+	               self::$data['settings']->$name=$value;
 	           }
 	    }
 	}
 
-	public static function getRandomString($length){
-    	$string='';
-        $min=1;
-        $max=7;
-        for ($i=1; $i<=$length; $i++){
-            $random=rand($min,$max);
-            if($random==4){
-               $string.=chr(rand(50,57));
-            }elseif($random<4){
-                $newchar=chr(rand(97,122));
-                $string.=$newchar;
-            }else{
-                 $newchar =chr(rand(65,90));
-                 $string.=$newchar;
-            }
-        }
-       return $string;
-	}
+	
+	
 
-	public static function upDateConfigFile(){
+	public function upDateConfig(){
 		self::$configXML->save(self::$xmlConfigfile);
 	}
 
