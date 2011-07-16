@@ -39,6 +39,7 @@ class mamurDataObject{
      */
     public function __construct(){
     	$this->data=array();
+    	$this->data[0]=array();
     	$this->record=0;
     	$this->setStatus('data','none');
     	$this->setStatus('read','no');
@@ -61,7 +62,11 @@ class mamurDataObject{
      * @return array of record items
      */
     public function getRecord(){
-    	return $this->data[$this->record];
+    	$ret=array();
+    	if(isset($this->data[$this->record])){
+    		$ret=$this->data[$this->record];
+    	}
+    	return $ret;
     }
     
   
@@ -82,7 +87,7 @@ class mamurDataObject{
      */
     public function setCurrentRecordNumber($record){
     	$ret=false;
-    	if(is_array($this->data[$record]) && count($this->data[$record])>0){
+    	if(isset($this->data[$record])){
     		$this->record=$record;
     		$ret=$record;
     	}
@@ -91,24 +96,18 @@ class mamurDataObject{
     
     /**
      * 
-     * Appends a record associated array to data but does not chnage current record
-     * @param array $recordData
+     * Appends a new record defined by an associated array
+     * or a blank record if not given and sets the record pointer 
+     * to point to the new record allowing access to variables
+     * @param array $recordData an associated array
      */
-    public function appendRecord($recordData){
+    public function appendRecord($recordData=array()){
     	$this->modified();
     	$this->data[]=$recordData;
+    	return $this->last();
     }
     
-    /**
-     * 
-     * Adds a new blank record and sets the record pointer so that 
-     * new items can be added using set magic method
-     */ 
-    public function newRecord(){
-    	$this->modified();
-    	$this->data[]=$recordData;
-    	$this->last();
-    }
+   
     
     /**
      * 
@@ -119,18 +118,23 @@ class mamurDataObject{
      * @return integer the current record number
      */
     public function deleteRecord($record=-1){
-    	$this->modified();
     	$rec=$record;
+    	$ret=false;
     	if($record==-1)$rec=$this->record; 
-    	unset($data[$rec]);
-    	if($rec==$this->record){
-	    	if($this->next()===false){
-	    		if($this->last()===false){
-	    			$this->record=0;
+    	
+    	if($rec>=0 && isset($this->data[$rec])){
+    		unset($this->data[$rec]);
+    		$this->modified();
+    		if($rec==$this->record){
+	    		if($this->next()===false){
+	    			if($this->last()===false){
+	    				$this->record=0;
+	    			}
 	    		}
-	    	}
-    	}
-    	return $this->record;
+    		}
+    		$ret=$this->record;
+    	}    	
+    	return $ret;
     }
 
     /**
@@ -141,8 +145,8 @@ class mamurDataObject{
      
     public function next(){
     	$ret=false;
-    	$try=$record++;
-    	if(is_array($this->data[$try])){
+    	$try=$this->record+1;
+    	if(isset($this->data[$try])){
     		$this->record=$try;
     		$ret=$try;
     	}
@@ -151,8 +155,8 @@ class mamurDataObject{
     
     public function back(){
     	$ret=false;
-    	$try=$record--;
-    	if($try>=0 && is_array($this->data[$try])){
+    	$try=$this->record-1;
+    	if($try>=0 && isset($this->data[$try])){
     		$this->record=$try;
     		$ret=$try;
     	}
@@ -161,8 +165,8 @@ class mamurDataObject{
     
     public function last(){
     	$ret=false;
-    	$try=count($data)-1;
-    	if($try>=0 && is_array($this->data[$try])){
+    	$try=count($this->data)-1;
+    	if($try>=0 && isset($this->data[$try])){
     		$this->record=$try;
     		$ret=$try;
     	}
@@ -173,6 +177,7 @@ class mamurDataObject{
     public function setAttribute($name,$value){
     	$this->modified();
     	$this->attributes[$name]=$value;
+    	return $value;
     }
     
     public function getAttribute($name){
@@ -185,6 +190,7 @@ class mamurDataObject{
     
     public function setStatus($name,$value){
     	$this->status[$name]=$value;
+    	return $value;
     }
     
     public function getStatus($name){
@@ -197,14 +203,17 @@ class mamurDataObject{
     
     public function persist(){
     	$this->setStatus('save','persist');
+    	return true;
     }
     
     public function read(){
     	$this->setStatus('read','read');
+    	return true;
     }
     
     public function modified(){
     	$this->setStatus('data','modified');
+    	return true;
     }
     
     /**
@@ -246,7 +255,6 @@ class mamurDataObject{
     public function __set($variable,$value){
     	$this->modified();
 		$this->data[$this->record][$variable]=$value;
-	
 	}
 	
     /**

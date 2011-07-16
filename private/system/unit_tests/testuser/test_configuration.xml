@@ -45,19 +45,32 @@
      <!-- set to yes to allow session cookie to be set supports user login, admin login
           session id for use by plugins to save session datasets -->
      <set allowSessionCookie="yes"/>
+     
+      <!-- use rijndael-256 (also known as AES 256) if available,
+          good alternatives are twofish (faster) and blowfish (older)
+          if there is no mcrypt available set to 'none' to use weak Obfuscation
+          All even none have MAC tamper protection-->
+     <set cipher="rijndael-256" />
 
      <!-- set to yes to allow permanent location id cookie to be set supports metrics
           allows returning visitors to be accessed when log plugin is used -->
      <set allowPermCookie="yes"/>
 
-     <!-- set sessionTimeOut="3600" to clear down dataset sessions after 1 hr of inactivity
-          this will cause lost of all dataset information unless a plugin traps the
-          clean up attempt and extends the session, This has nothing to do with php sessions -->
-     <set sessionTimeOut="3600"/>
+     <!-- set dataObjectExpiry="36000" to clear all dataObjects older than 10 hours,
+          this could worst case limit the time of a session not just the period of
+          inactivity
+           -->
+     <set dataObjectExpiry="36000"/>
+          
+     <!-- set sessionTimeOut="10800" so that after 3 hrs of inactivity the next request will
+          end session and remove dataObjects.
+          Note: The loginTimeOut and cookie linked nonce mechanism reduces attack window.
+          during critical operations
+          This has nothing to do with php sessions -->
+     <set sessionTimeOut="10800"/>
 
-     <!-- set loginTimeOut="900" to log out user after 15 mins of inactivity login does
-          not depend on sessions and can be longer or shorter-->
-     <set loginTimeOut="900"/>
+     <!-- set loginTimeOut="1800" to log out user after 30 mins of inactivity -->
+     <set loginTimeOut="1800"/>
 
      <!-- The protected tag will if not logged, cause a redirect to this page by default
           note if you delete loginPage setting - login.htm is assumed anyway.-->

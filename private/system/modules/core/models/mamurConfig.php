@@ -36,13 +36,13 @@ class mamurConfig{
 	
 	private static $data;
 	
-	private static $xmlConfigfile,$configXML;
+	private static $xmlConfigfile,$configXML,$persist;
 	
 	// Hold an instance of the class
     private static $instance;
     
     // A private constructor; prevents direct creation of object
-    private function __construct() 
+    private function __construct()
     {
     }
     
@@ -60,16 +60,17 @@ class mamurConfig{
 	/**
 	 * processConfig saves configuration setup in index.php and bootstrap
 	 * then reads configuration.xml file for the main setup variables
+	 * It is normally called only once by the controller bootstrap mamur.php
 	 * Each data group is handled by a mamurConfigData class which makes it
 	 * easy to use settings when required since the class instance can be 
 	 * obtained by a call to this class eg
-	 * $set =mamurConfig::get('settings'); //gets globals data
+	 * $set =mamurConfig::getInstance->settings ; //gets settings data
 	 * print $set->server; 
 	 * @param $mamurPageConfig - settings made during start up and added to the settings data class
 	 * @return void
 	 */
   	public function  processConfig($mamurPageConfig){
-	  	
+	  	self::$persist=false;
 	    self::$data['settings']=$mamurPageConfig;
 	  	//set start time used to get an idea of processing speed
 	  	self::$data['settings']->time_start= ((float)self::$data['settings']->start_usec+ (float)self::$data['settings']->start_sec);
@@ -426,6 +427,7 @@ class mamurConfig{
 	           	        $setList->item(0)->getAttribute($name)=='new'){
 	           	     	self::$data['settings']->$name=$value;
 	                	$setList->item(0)->setAttribute($name, $value);
+	                	self::$persist=true;
 	           	     }else{
 	           	     	//for security silent failure visible only if fireBug is running
 	           	     	@trigger_error("Once set you cannot change the setting $name");
@@ -436,15 +438,23 @@ class mamurConfig{
 	               $newnode = $section->appendChild($element );
 	               $newnode->setAttribute($name,$value);
 	               self::$data['settings']->$name=$value;
+	               self::$persist=true;
 	           }
 	    }
 	}
 
 	
 	
-
+    /**
+     * 
+     * This is normally called by controller at end of page
+     * it automatically saves and configurations which have been
+     * set using persitSettings() method
+     */
 	public function upDateConfig(){
-		self::$configXML->save(self::$xmlConfigfile);
+		if(self::$persist){
+			self::$configXML->save(self::$xmlConfigfile);
+		}
 	}
 
 	

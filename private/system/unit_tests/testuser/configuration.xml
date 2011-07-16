@@ -8,7 +8,7 @@
      <set installed="done"/>
 
      <!-- api ID is new on first install, when installed should not be changed  -->
-     <set apiId="new"/>
+     <set apiId="F196021831LHFWZ"/>
 	 
 	 <!-- page build - set to yes to enable pages to be pre-built in php from content files and globals reducing page
 	  load times, however once a page is built changes to static content will no longer be shown until the built file
@@ -45,19 +45,32 @@
      <!-- set to yes to allow session cookie to be set supports user login, admin login
           session id for use by plugins to save session datasets -->
      <set allowSessionCookie="yes"/>
+     
+     <!-- Normally rijndael-256 if available in mcrypt or set to none -->
+     <set cipher="rijndael-256"/>
 
      <!-- set to yes to allow permanent location id cookie to be set supports metrics
           allows returning visitors to be accessed when log plugin is used -->
      <set allowPermCookie="yes"/>
 
-     <!-- set sessionTimeOut="3600" to clear down dataset sessions after 1 hr of inactivity
-          this will cause lost of all dataset information unless a plugin traps the
-          clean up attempt and extends the session, This has nothing to do with php sessions -->
-     <set sessionTimeOut="3600"/>
+     <!-- set dataObjectExpiry="36000" to clear all dataObjects older than 10 hours,
+          this could worst case limit the time of a session not just the period of
+          inactivity
+           -->
+     <set dataObjectExpiry="36000"/>
+          
+     <!-- set sessionTimeOut="10800" to abort a sessions after 3 hrs of inactivity
+          this will remove dataObjects if a reply is recieved after this time.
+          This gives a maximum of 3 hours re-use a stolen coookie during non-critical
+          activity at other times the loginTimeOut and cookie linked nonce mechanism reduces
+          attack window.
+          This has nothing to do with php sessions -->
+     <set sessionTimeOut="10800"/>
 
-     <!-- set loginTimeOut="900" to log out user after 15 mins of inactivity login does
+     <!-- set loginTimeOut="1800" to log out user after 30 mins of inactivity login does
           not depend on sessions and can be longer or shorter-->
-     <set loginTimeOut="900"/>
+     <set loginTimeOut="1800"/>
+
 
      <!-- The protected tag will if not logged, cause a redirect to this page by default
           note if you delete loginPage setting - login.htm is assumed anyway.-->
@@ -67,7 +80,7 @@
      <set sessionCleaned="1305247723"/>
 
      <!-- salt string of random characters >116 set to "new" to re-randomise for security  -->
-     <set salt="ewfwefewfefewfewfewfewfewfeefewf7794375945797439347934793"/>
+     <set salt="2fZfXsw3VjxhoFa28h2dyydDXyXPLz97HAeU628rbS9icmFLCgKLkSFcJppBiaGNXYBzIXwkZ7czucYqFHZZXRUEu2xBbhkhmOhSrfkRTF8VpLh6zFQZa"/>
 	 
      <!-- version status -->
 
@@ -77,7 +90,7 @@
       <set serverTimeZone="UTC"/>
       <set userTimeZone="UTC"/>
 
-      <set newtestsset="12345"/></settings>
+      </settings>
 
   <!--globals are strings which can be inserted using the global tag
     each global is definded as server example below

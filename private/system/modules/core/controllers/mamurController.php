@@ -66,23 +66,48 @@ abstract class mamurController{
 		}
 	
 		//@trigger_error("TRACE matched $controllerToUse");
-		
-		if(!isset($_COOKIE["locid"]) && $set->allowPermCookie=='yes' ){
-        	self::$model->setLocidCookie();
-    	}else{
-        	self::$model->confirmLocid($_COOKIE["locid"]);
-   		}
+         $contents=ob_get_contents ();
+         if(!empty($contents)){
+         	@trigger_error("Unexpected Output just before clearing buffer and running $controllerToUse controller");
+         }
+		 ob_end_clean(); //turn off the buffer and clean output so far
+		 		
    		//see if another controller is required
    		if($controllerToUse!='mamurController'){
+   			//this an alternative controller
+   			//In alternative controller's response action copy the mamur 
+   			//controller code below in order to to use mamur managed cookies,
+   			//nonce, sessions and dataObjects must start with ob_start plus
+   			//setupSession and end with ob_end_flush
+
    			self::$controller=new $controllerToUse;
    			self::$controller->response($set->uri);
    			
    		}else{
+   			//use mamur controller
+   			ob_start();
+   			ob_implicit_flush(false);
    			self::$controller=null;
+   			self::$model->setUpSession();
    			self::$view=new mamurView();
    			self::$view->setModel(self::$model);
    			self::response($set->uri);	
-   		}	
+   			//now complete the session set up
+   			//now just before print output (ob_end_flush)
+   			//we will set session cookie and store
+    		//any new session data
+    	
+    		if($set->allowSessionCookie=='yes' ){
+        		self::$model->setSessionCookie();
+        		self::$model->saveDataObjects();
+    		}
+    		//update the config file if required
+    		$config->upDateConfig();
+    		//flush buffer to return output
+    		ob_end_flush();
+   		}
+   		
+   			
 	}
 
 	/**
@@ -102,19 +127,14 @@ abstract class mamurController{
 	}
 	
 	/**
-	 * response method has the controll steps to resond to a url
-	 * and print a page.
+	 * response method has the control steps to respond to a url
+	 * and update print buffer.
 	 * @param $uri - address of a page
 	 * @return unknown_type
 	 */
 	
 	protected static function response($uri){
-    	//this should have been set up in mmaur.php but we do another just in case
-    	ob_clean();
-    	ob_start();
-    	ob_implicit_flush(true);
-        $config=mamurConfig::getInstance();
-        
+        $config=mamurConfig::getInstance(); 
     	//check to see if logout must be forced automatically can be cancelled
     	//by a plugin
     	self::$model->checkLogOut();
@@ -150,16 +170,10 @@ abstract class mamurController{
           	  }
         	}
     	}
-    	//now just before print output (ob_end_flush) we will set session cookie and store
-    	//any new session data
-    	if($config->allowSessionCookie=='yes' ){
-        	self::$model->setSessionCookie();
-        	self::$model->saveDataSets();
-    	}
-    	ob_end_flush();
+    	
 
 	}
-
+   
 }
 
 

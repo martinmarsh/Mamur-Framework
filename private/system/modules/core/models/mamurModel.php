@@ -35,8 +35,6 @@
  */
 
 class mamurModel {
-   // protected $control;
-    //protected $view;
     protected $webBaseDir,$pageURL,$mamurURL;
     protected $xmlPageType,$phpParameters;
     protected $defaultPageName,$defaultPageExt,$pageQuery,$pageName,$pageDir,$pageDirList,$pageExt;
@@ -56,106 +54,148 @@ class mamurModel {
 
 
 	   
-/**
- * Constructor sets up properties according to configuration
- * On first install Sets apiID and Salt
- * Manages cookies (if enabled), decrypt stored session cookies, 
- * logouts and set up user session data
- * @return void
- */ 
+	/**
+ 	* Constructor sets up properties according to configuration
+ 	* On first install Sets apiID and Salt
+ 	* Manages cookies (if enabled), decrypt stored session cookies, 
+	* logouts and set up user session data
+	* @return void
+ 	*/ 
     
 
-public function   __construct(){
-	   $config=mamurConfig::getInstance();
-	   $set=$config->settings;
+	public function   __construct(){
+		$config=mamurConfig::getInstance();
+		$set=$config->settings;
 
-       $this->defaultPageName=$set->homePage;
-       $this->defaultPageExt=$set->pageExt;
-       $this->webBaseDir=$set->root;      //Base directory of web site
-
-       //note plugin dir  set by remote call
-       $this->mamurBaseDir=$set->mamur;
-       $this->mamurURL=str_replace($this->webBaseDir,'', $this->mamurBaseDir);
-       if(DIRECTORY_SEPARATOR=='\\'){
-        $this->mamurURL=str_replace(DIRECTORY_SEPARATOR ,'/', $this->mamurURL );
-       }
-       $this->mamurlogDir=$set->logDir;
-       $this->mamurSystemDir=$set->system;
-       $this->logOutFlag=false;
-       $this->mamurUserDir=$set->user;
-       $this->xmlPageType=false;
-       $this->error404PageName="errornotfound";
-       $this->countSerial=0;
-       $this->setHostData($set->host);
-       $this->global=array();
-       $this->urlCallBack=array();
-       $this->pageProcessCallBack=array();
-       $this->pagePagePrintCallBack=array();
-       $this->sessionClearCallBack=array();
-       $this->sessionLogoutCallBack=array();
-       $this->serverBaseRequestCallBack=array();
-       $this->dataObjects=null;
-       $this->tags=array();
-       $this->options=array();
-       $this->phpParameters=array();
+    	$this->defaultPageName=$set->homePage;
+    	$this->defaultPageExt=$set->pageExt;
+    	$this->webBaseDir=$set->webBaseDir;
+       
+    	//note plugin dir  set by remote call
+    	$this->mamurBaseDir=$set->mamur;
+    	$this->mamurURL=str_replace($this->webBaseDir,'', $this->mamurBaseDir);
+    	if(DIRECTORY_SEPARATOR=='\\'){
+    		$this->mamurURL=str_replace(DIRECTORY_SEPARATOR ,'/', $this->mamurURL );
+    	}
+    	$this->mamurlogDir=$set->logDir;
+		$this->mamurSystemDir=$set->system;
+		$this->logOutFlag=false;
+		$this->mamurUserDir=$set->user;
+    	$this->xmlPageType=false;
+    	$this->error404PageName="errornotfound";
+    	$this->countSerial=0;
+		$this->setHostData($set->host);
+		$this->global=array();
+		$this->urlCallBack=array();
+		$this->pageProcessCallBack=array();
+		$this->pagePagePrintCallBack=array();
+		$this->sessionClearCallBack=array();
+		$this->sessionLogoutCallBack=array();
+		$this->serverBaseRequestCallBack=array();
+		$this->dataObjects=null;
+		$this->tags=array();
+		$this->options=array();
+		$this->phpParameters=array();
+		$this->session=array();
+		$this->inSession=false;
      
+		$update=false;
+		if($set->salt=='new'){
+			$set->salt=$this->getRandomString(117);
+			$config->persistSetting('salt',$set->salt);
+			$update=true;
+		}
+		if($set->apiId=='new'){
+			$set->apiId=$this->unique_serial();
+			$config->persistSetting('apiId',$set->apiId);
+			$update=true;
+		}
 
-       $update=false;
-       if($set->salt=='new'){
-          $set->salt=$this->getRandomString(117);
-          $config->persistSetting('salt',$set->salt);
-          $update=true;
-       }
-       if($set->apiId=='new'){
-       	   $set->apiId=$this->unique_serial();
-       	   $config->persistSetting('apiId',$set->apiId);
-           $update=true;
-       }
+		if($update){
+			$config->upDateConfig();
+		}
+	}
+	
 
-       if($update){
-           $config->upDateConfig();
-       }
-       $this->session=array();
-       $this->inSession=false;
-       if(isset($_COOKIE['session'])){
-            $this->inSession=true;
-            $this->session=$this->decrypt($_COOKIE['session'],63,19);
-            $this->oldSession=$this->session;
-       }
-       if(!isset($this->session['verify']) ){
-           $this->session['verify']=$this->getRandomString(12);
-       } 
-       
-       if(!isset($this->session['id'])){
-           $this->session['id']=$this->unique_serial().$this->getRandomString(8);
-       }
-       
+	/**
+	 * 
+	 * Sets up session and processes cookies as per configuration
+	 */
+	public function setUpSession(){
+		$config=mamurConfig::getInstance();
+		$set=$config->settings;
+		
+		$this->session=array();
+		$this->inSession=false;
+		
+		if(isset($_COOKIE['session'])){
+			$this->inSession=true;
+			$this->session=$this->decrypt($_COOKIE['session'],53,19);
+			$this->oldSession=$this->session;
+		}
     	
-    	if(!isset($this->session['user'])){
-           $this->session['user']['name']='unknown';
-           $this->session['user']['id']='';
-           $this->session['user']['loggedin']=false;
-           $this->session['user']['status']=0;
-           $this->session['user']['statusName']='unknown';
-           $this->session['user']['group']='unknown';
-           $this->session['user']['time']=time();
-       //log out if time out exceeded - reset timer and cookie every 1/3 rd of time out
-       //period when (logged in) Note logOutFlag is set so that log out
-       //can be canccelled by a plugin (note plugins have not loaded yet)
+		if($this->inSession && isset($this->session['timer']) && time()-$this->session['timer']>$set->sessionTimeOut){
+			$fullFile="{$this->mamurUserDir}/databases/mamur_datasets/{$this->session['id']}.txt";
+          
+           	$canDelete=true;
+            foreach($this->sessionClearCallBack as $callBack){
+           		$canDelete=$canDelete && $callBack['ref']->$callBack['func']($fullFile);
+            }
+            if($canDelete){
+             	unlink($fullFile);
+             	unset($this->session);
+             	$this->session=array();
+             	$this->oldSession=array();	
+            } 	
+		}
+		
+		if(!isset($this->session['id'])){
+			$this->session['id']=$this->unique_serial().$this->getRandomString(8);
+		}
+		
+		$this->session['timer']=time();
+       
+		if(!isset($this->session['user'])){
+			$this->session['user']['name']='unknown';
+			$this->session['user']['id']='';
+			$this->session['user']['loggedin']=false;
+			$this->session['user']['status']=0;
+			$this->session['user']['statusName']='unknown';
+			$this->session['user']['group']='unknown';
+			$this->session['user']['time']=time();
+			//log out if time out exceeded - reset timer and compute cookie 
+			//on each page request whilst logged in.
+			//Note logOutFlag is set so that log out
+			//can be cancelled by scripts and plugins
 
-       }elseif($this->session['user']['loggedin'] &&
-           time()-$this->session['user']['time'] > $set->loginTimeOut ){
-           $this->logOutFlag=true;
-           $this->session['user']['time']=time();
-       }elseif($this->session['user']['loggedin'] &&
-           time()-$this->session['user']['time'] >  $set->loginTimeOut/3 ){
-           $this->session['user']['time']=time();
-       }
-       if(!isset($this->session['page'])){
-           $this->session['page']['edit']=false;
-       }
-      // print_r($this->session);
-    }
+		}elseif($this->session['user']['loggedin'] &&
+			time()-$this->session['user']['time'] > $set->loginTimeOut ){
+           	$this->logOutFlag=true;
+           	$this->session['user']['time']=time();
+		}elseif($this->session['user']['loggedin']){
+           	$this->session['user']['time']=time();
+		}
+		if(!isset($this->session['page'])){
+           	$this->session['page']['edit']=false;
+		}
+		
+		if(!isset($_COOKIE["locid"]) && $set->allowPermCookie=='yes' ){
+        	$this->setLocidCookie();
+     	}else{
+         	$this->locid=$_COOKIE["locid"];
+        	$this->locidAccepted=true;
+         	//tie cookies together for additional security check
+        	$this->session['locid']=$this->locid;
+    	}
+		
+		if(!$this->inSession){
+			//If session cookie has not been read back all above
+			//will be initialisation for every page and the session
+			//cookie will only be written when another chnage to session
+			//is made.
+			$this->oldSession=$this->session;
+		}
+	}
 
 	/**
 	 * Checks to see if logout required.
@@ -251,25 +291,23 @@ public function   __construct(){
         return $ret;
      }
      
- //xxxx    
+ 
      /**
-      * Places a directory list to a dataObject
-      * @param $dSet
-      * @param $listArray
-      * @param $datasetName
-      * @param $table
-      * @return unknown_type
+      * 
+      * Places a directory list into a data object at the current record
+      * and in a named field or dataObject item
+      * each field is labelled
+      * @param unknown_type $listArray
+      * @param unknown_type $dataObjectName
+      * @param unknown_type $fieldName to place the list in
       */
-
-     public function dirListToDataSet(&$dSet,$listArray,$dataObjectName,$table='default'){
-       //  $dSet['table'][$table]=array();
-         $row=&$dSet['table'][$table];
-         $field=array();
-         foreach($listArray as $file){
-                $field['name']=basename($file,'.html');
-                $row[]=$field;
-         }
-         $this->setDataSet($datasetName,$dSet);
+     public function dirListToDataObject($listArray,$dataObjectName,$fieldName){
+     	$data=$this->getDataObject($dataObjectName);
+     	$a=array();
+        foreach($listArray as $file){
+        	$a[]=basename($file,'.html');
+        }
+        $data->$fieldName=$a;
      }
 
 
@@ -313,18 +351,13 @@ public function   __construct(){
             $timer=array();
             list($timer['lusec'], $timer['lsec']) = explode(" ", microtime());
             $set->time_end = ((float)$timer['lusec'] + (float)$timer['lsec']);
+            $set->time_start=((float)$set->start_usec + (float)$set->start_sec);
             $ret=(intval(( $set->time_end - $set->time_start)*10000)/10);
         }
         return $ret;
     }
     
-	/**
-	 * Saves configustaion settings by Updating  the xml file
-	 * @return void
-	 */
-    public function upDateConfigFile(){
-      mamurConfig::upDateConfigFile();
-    }
+
 
     /**
      * Sets page uri and associated internal varaibles using the value of the url parameter passed.
@@ -421,34 +454,12 @@ public function   __construct(){
               $this->session['user']['statusName']=$statusName;
               $this->session['user']['time']=time();
          }
-         $this->sessionReVerify();
+        
     }
 
    
 
-    /*
-     * sessionReVerify
-     * As with all systems stealing a cookie gives you access so we cannot
-     * protect against systems which can steal and write cookies on demand.
-     * Hosting a rogue javascript could provide such a security breach.
-     *
-     * We use an encryted cookie to stored login data so stealing a cookie prior
-     * to login is no use. There is inherent protection from rogue web sites which pass
-     * a pre-obtained cookies to a user.
-     * The verification code gives another level of protection should the cookie
-     * encrytion be hacked so that cookies can be made up and passed to a user.
-     * So that the user was not alerted to the problem by being automatically logged
-     * in the attacker could pass a made up session id and logged out status.
-     * Optionally, a secure system can check stored dataset sessions to see if
-     * the verification code matches that in the cookie. This code is also changed
-     * at log in so this attack would fail. Most systems probably do not need this
-     * extra protection ie other attack routes would probably be easier than breaking
-     * the encyption.
-     * 
-     */
-    public function sessionReVerify(){
-           $this->session['verify']=$this->getRandomString(12);
-    }
+    
 
     /**
      * Checks if user logged in
@@ -553,20 +564,24 @@ public function   __construct(){
 
    /**
     * 
-    * Gets a 32 byte salt by concatinating two 16 byte strings from 
-    * the configuration salt string. Each installation will have a unique
-    * salt and unless re-insatlled the salt will always remain the same
+    * Gets a salt by concatinating two equal length strings from 
+    * the configuration salt string. The default is 32 bytes but any
+    * even number may be used. Each installation has a unique
+    * salt and unless re-installed the salt will always remain the same
     * Allowing it to be used for encryption of long lived resources.
     * To allow different salts to be defined there is an option to give
-    * two integers are supplied to identify the salt required.
-    * This method also makes it les obvoius to see the salts by looking at the
+    * two integers to identify the salt required.
+    * This method also makes it harder to see the salts by looking at the
     * configuration file
     * @param integer $a  - value from 0 to 99 (optional defaults to 84)
     * @param integer $b  - value from 0 to 99 (optional defaults to 11)
+    * @param integer $len - length of salt (optional defaults to 32)
     * @return 32byte salt string
     */
-    protected function getSalt($a=84,$b=11){
-          return  substr(mamurConfig::$config['salt'],$a,16).substr(mamurConfig::$config['salt'],$b,16);
+    protected function getSalt($a=84,$b=11,$len=32){
+    	  $l=intval($len/2);
+    	  $set=mamurConfig::getInstance()->settings;	    
+          return  substr($set->salt,$a,$l).substr($set->salt,$b,$l);
     }
 
     /**
@@ -575,53 +590,171 @@ public function   __construct(){
      * @return 16byte salt for use with Api
      */
     public function getApiSalt(){
-       return  substr(mamurConfig::$config['salt'],7,10).substr(mamurConfig::$config['salt'],93,6);
+        $set=mamurConfig::getInstance()->settings;	
+       return  substr($set->salt,7,10).substr($set->salt,93,6);
     }
 
 	/**
 	 * 
 	 * Decytpt a String using rijndael-256 and optionally
-	 * 2 security integers to identify the salt to use
+	 * 2 security integers to identify the salt bases to use
 	 * @param string $value - base64 encoded 256bit encypted data
 	 * @param integer $a
 	 * @param integer $b
 	 * @return Decypted string
 	 */
-    public function decrypt($value,$a=54,$b=16){
+    public function decrypt($value,$a=44,$b=16){
+    	$set=mamurConfig::getInstance()->settings;
         $dataArray=array();
         if($value!=''){
           $encryptdata=unserialize(base64_decode($value));
-          if(is_array($encryptdata)&& isset($encryptdata[1]) ){
-              $salt=$this->getSalt($a,$b);
-              $data=mcrypt_decrypt ('rijndael-256', $salt,
-                                      $encryptdata[0], 'cbc',$encryptdata[1]);
-              if(substr($data,0,1)=='a'){
-                 $dataArray=unserialize($data);
-              }
+          $decrypted=false;
+          $salt2=$this->getSalt($a+30,$b+30,32);
+          $verified=false;
+          if(is_array($encryptdata)
+                 && isset($encryptdata[0])
+	             && isset($encryptdata[1])
+	             && isset($encryptdata[2])
+	             && isset($encryptdata[3])
+	             && isset($encryptdata[4])
+	             && isset($encryptdata[5])
+	      ){
+          		if(function_exists('hash_hmac')){
+        			$verify = hash_hmac ( "sha256" ,$encryptdata[0].$encryptdata[1] ,$salt2 ,true ); 
+       	  		}else{
+       				$verify = md5($salt2.$encryptdata[0].$encryptdata[1].$salt2);
+          		}
+          		$verified=($verify == $encryptdata[5] );
+	      }
+          if(function_exists("mcrypt_module_open")
+             && $set->cipher!='none'
+          ){
+	          if($verified && $encryptdata[2]>15){
+	              $salt=$this->getSalt($a+$encryptdata[4],$b+$encryptdata[3],$encryptdata[2]);
+
+	              $data=mcrypt_decrypt ($set->cipher, $salt,
+	                                      $encryptdata[0], 'cbc',$encryptdata[1]);
+ 
+	              $data=substr($data,17);  
+	              if(substr($data,0,1)=='a'){
+	                 $dataArray=unserialize($data);
+	                 $decrypted=true;
+	              }
+	          }
+          }
+         
+          if(!$decrypted && $verified && $encryptdata[2]==0){
+          	  $data=str_rot13(base64_decode($encryptdata[0]));
+          	  $data=substr($data,17); 
+          	  if(substr($data,0,1)=='a'){
+	                 $dataArray=unserialize($data); 
+          	  }     	
           }
         }
+     
         return $dataArray;
     }
 
     /**
 	 * 
 	 * encrypt a String using rijndael-256 and optionally
-	 * 2 security integers to identify the salt to use
+	 * 2 security integers to identify the salt bases to use
 	 * @param string $value 
-	 * @param integer $a
-	 * @param integer $b
+	 * @param integer $a (must be less than 70)
+	 * @param integer $b (must be less than 70)
 	 * @return encrypted string base64_encoded
 	 */  
-    public function encrypt($dataArray,$a=54,$b=16){
-        $td = mcrypt_module_open('rijndael-256', '', 'cbc', '');
-        $iv = mcrypt_create_iv (mcrypt_enc_get_iv_size($td), MCRYPT_RAND);
-        $salt=$this->getSalt($a,$b);
-        mcrypt_generic_init($td,$salt, $iv);
-        $data[0] = mcrypt_generic($td, serialize($dataArray));
-        $data[1] = $iv;
-        mcrypt_generic_deinit($td);
-        mcrypt_module_close($td);
+    public function encrypt($dataArray,$a=44,$b=8){
+    	$set=mamurConfig::getInstance()->settings;
+    	$aOffset=rand(0,29);
+        $bOffset=rand(0,29);
+    	$td=false;
+    	//ensure some randomness at start of the message and
+    	//make it harder to forge a change (requires breaking MAC as well)
+    	$randLeader=$this->getRandomString(17);
+    	$salt2=$this->getSalt($a+30,$b+30,32);
+    	if(function_exists("mcrypt_module_open")
+    	    && $set->cipher!='none'
+    	 ){
+    		$td = mcrypt_module_open($set->cipher, '', 'cbc', '');
+    	} 
+    	if($td!==false){
+    		srand((double) microtime() * 1000000); //not required after 5.3 MCRYPT_RAND	
+        	$iv = mcrypt_create_iv (mcrypt_enc_get_iv_size($td), MCRYPT_RAND);
+        	$keySize=mcrypt_enc_get_key_size ($td);
+        	$salt=$this->getSalt($a+$aOffset,$b+$bOffset,$keySize);
+        	mcrypt_generic_init($td,$salt, $iv);
+        	$data[0] = mcrypt_generic($td, $randLeader.serialize($dataArray));
+        	$data[1] = $iv;
+        	$data[2] = $keySize;
+        	$data[3] = $bOffset;
+        	$data[4] = $aOffset;       	
+        	mcrypt_generic_deinit($td);
+        	mcrypt_module_close($td);
+    	}else{
+    		@trigger_error("Warning no cookie encyption!");
+    		$data[0] = base64_encode(str_rot13($randLeader.serialize($dataArray)));
+    		$data[1] = $this->getRandomString(32);
+    		$data[2] = 0;
+    		$data[3] = 0;
+    		$data[4] = 0;
+    	}
+    	
+        //We add an hmac to make it harder to tamper with a captured
+        //cookies and by IV manipulation chnage the start of the data
+        //Note serialised array structure and a random lead in also
+        //makes tamperring harder as deserialisation will also fail.
+        
+        if(function_exists('hash_hmac')){
+        	$data[5] = hash_hmac( "sha256" ,$data[0].$data[1] ,$salt2 ,true ); 
+        }else{
+       		$data[5] = md5($salt2.$data[0].$data[1].$salt2);
+        }
         return  base64_encode(serialize($data));
+    }
+    
+    
+   /**
+     *  PBKDF2 Implementation (as described in RFC 2898)
+     *  This is recommended for password hashing but takes
+     *  some computing power due to min 1000 loops, so only
+     *  use on infequent activities such as for passwords.
+     *  Overhead is probably less than 10ms
+     *  Reference: 
+     *  http://www.itnewb.com/v/Encrypting-Passwords-with-PHP-for-Storage-Using-the-RSA-PBKDF2-Standard
+     *  http://en.wikipedia.org/wiki/PBKDF2
+     *  
+     *  @param string p password
+     *  @param string s salt
+     *  @param int c iteration count (use 1000 or higher)
+     *  @param int kl derived key length
+     *  @param string a hash algorithm
+     *
+     *  @return string derived key
+    */
+    public function pbkdf2( $p, $s, $c, $kl, $a = 'sha256' ) {
+ 
+        $hl = strlen(hash($a, null, true)); // Hash length
+        $kb = ceil($kl / $hl);              // Key blocks to compute
+        $dk = '';                           // Derived key
+ 
+        // Create key
+        for ( $block = 1; $block <= $kb; $block ++ ) {
+ 
+            // Initial hash for this block
+            $ib = $b = hash_hmac($a, $s . pack('N', $block), $p, true);
+ 
+            // Perform block iterations
+            for ( $i = 1; $i < $c; $i ++ ){
+ 
+                // XOR each iterate
+                $ib ^= ($b = hash_hmac($a, $b, $p, true));
+            }
+            $dk .= $ib; # Append iterated block
+        }
+ 
+        # Return derived key of correct length
+        return substr($dk, 0, $kl);
     }
     
     
@@ -744,6 +877,7 @@ public function   __construct(){
      */
      public function setSessionCookie(){
         $alldomains='.';
+        $data="";
         if( $this->hostdomain!=''){
             $alldomains.=$this->hostdomain;
 
@@ -752,18 +886,25 @@ public function   __construct(){
             $alldomains.='.'.$this->topdomain;
         }
         if($this->session!=$this->oldSession){
-            $data=$this->encrypt($this->session,63,19);
+            $data=$this->getEncryptedSession();
             setcookie("session", $data, 0,"/", $alldomains,FALSE,TRUE);
+         
         }
+        return $data;
     }
 
-    // called by controller to set locid when returned by a cookie
-    public function confirmLocid($locid){
-        $this->locid=$locid;
-        $this->locidAccepted=true;
-
-    }
-
+     /**
+      * 
+      * Gets session data in an encrpted string identical to that
+      * persisted (via session cookie). Use this call in unit tests
+      * to set $cookie['session'] to allow persistance between models
+      * @return encrypted session data used to persist session
+      */
+     public function getEncryptedSession(){
+     	 return $this->encrypt($this->session,53,19);
+     }
+    
+    
 
     public function readPageXML(){
      //now process page Process url plugins which redirect page processing
@@ -1065,9 +1206,11 @@ public function   __construct(){
     }
 
     public function timeStampToUserDate($stamp,$format=DATE_ATOM){
+      $set=mamurConfig::getInstance()->settings;
+
       $date=gmdate(DATE_ATOM,$stamp);
       $UTCZ = new DateTimeZone('UTC');
-      $userZ = new DateTimeZone(mamurConfig::$config['userTimeZone']);
+      $userZ = new DateTimeZone($set->userTimeZone);
       $dt = new DateTime($date,$UTCZ);
       $dt->setTimezone($userZ);
       $date=$dt->format($format);
@@ -1075,10 +1218,11 @@ public function   __construct(){
     }
 
     public function getUserZoneOffset($date){
+    	 $set=mamurConfig::getInstance()->settings;
          $diff=0;
-         if(mamurConfig::$config['serverTimeZone'] != mamurConfig::$config['userTimeZone']){
-             $serverZ = new DateTimeZone(mamurConfig::$config['serverTimeZone']);
-             $userZ = new DateTimeZone(mamurConfig::$config['userTimeZone']);
+         if($set->serverTimeZone != $set->userTimeZone){
+             $serverZ = new DateTimeZone($set->serverTimeZone);
+             $userZ = new DateTimeZone($set->userTimeZone);
              $serverD=new DateTime($date, $serverZ);
              $userD=new DateTime($date, $userZ);
              $diff=($serverD->getOffset())-($userD->getOffset());
@@ -1089,11 +1233,12 @@ public function   __construct(){
     //gets user date converting from server zone to display in user zone
     //if date in is in DATE_RFC822, DATE_ATOM etc no conversion of time occurs just the Zone displayed
     public function convertToUserZone($date,$format=DATE_ATOM){
-            $serverZ = new DateTimeZone(mamurConfig::$config['serverTimeZone']);
-            $userZ = new DateTimeZone(mamurConfig::$config['userTimeZone']);
-            $dt = new DateTime($date,  $serverZ);
-            $dt->setTimezone($userZ);
-            $date= $dt->format($format);
+    	$set=mamurConfig::getInstance()->settings;
+		$serverZ = new DateTimeZone($set->serverTimeZone);
+		$userZ = new DateTimeZone($set->userTimeZone);
+		$dt = new DateTime($date,  $serverZ);
+		$dt->setTimezone($userZ);
+		$date= $dt->format($format);
        return $date;
     }
 
@@ -1110,9 +1255,16 @@ public function   __construct(){
         }
     }
 
+    /**
+     * 
+     * Sets a global for use on current page
+     * the value is not persisted.
+     * @param unknown_type $name
+     * @param unknown_type $value
+     */
     public function setGlobal($name,$value){
-          mamurConfig::setGlobal($name,$value);
-
+         $global=mamurConfig::getInstance()->globals;
+         $global->$name=$value;
     }
 
    public function pageProcessHookContinue(){
@@ -1276,117 +1428,100 @@ public function   __construct(){
         return $this->hostScheme.'://'.$_SERVER["HTTP_HOST"];
     }
 
+    /**
+     * 
+     * A nonce is a number used once and can be used to prevent forms
+     * from being resent. They also provide a security check see
+     * getNonce
+     * @param string $name - name of nonce
+     * @param integer $length - number of characters to use 16 if not given
+     */
     public function setNonce($name='mamurData',$length=16){
     	$data=$this->getDataObject($name);
     	$nonce=$this->getRandomString($length);
         $data->mamurNonce=$nonce;
+        $data->persist();
+        //this causes a new session cookie to be generated
+        $this->session['nonces'][$name]=$nonce;
         return $nonce;
     }
 
+    /**
+     * 
+     * A named Nonce value will be returned if it has been set.
+     * For security nonces are saved to server side session dataObject
+     * as well as in the encryted session cookie.
+     * If security fails the nonce will be set to false which may indicate
+     * a stolen session cookie and a security action such as logging is required.
+     * Use a nonce when it makes sense to protect access or use of
+     * a form which is related to an action in a browser tab window.
+     * The nonce value must still be compaired to the value used in the form
+     * but a mismatch indcates that the form may have been previously submitted
+     * @param string $name - name of nonce
+     * @return nonce - value of nonce, null if not known, false if security violation
+     */
     public function getNonce($name='mamurData'){
-        return $this->getDataObject($name)->mamurNonce;
+    	$ret=null;
+    	$nonce=$this->getDataObject($name)->mamurNonce;
+    	if(isset($this->session['nonces'][$name])){
+    		if($this->session['nonces'][$name]===$nonce){
+    			$ret=$nonce;
+    		}else{
+    			$ret=false;
+    		}
+    	}
+        return $ret;
     }
 
+    
     public function getDataObject($name){
         if(!is_array($this->dataObjects)){
             $this->readDataObjects();
         }
-    	if(!isset($this->dataObjects[$name])){
-    		$this->dataObjects[$name]=new mamurDataObject();
+    	if(!isset($this->dataObjects['data'][$name])){
+    		$this->dataObjects['data'][$name]=new mamurDataObject();
     	}
-    	return $this->dataObjects[$name];
+    	return $this->dataObjects['data'][$name];
     }
-
-    public function verifyDataSets(){
-        if(!is_array($this->datasets)){
-            $this->readDataSets();
-        }
-        if(isset($this->datasets['verify'])){
-            return $this->datasets['verify']===$this->session['verify'];
-        }else{
-            return null;
-        }
-    }
-
+    
+    
     public function readDataObjects(){
-        $file="{$this->mamurUserDir}/databases/mamur_datasets/{$this->session['id']}.txt";
+        $file="{$this->mamurUserDir}/databases/mamur_datasets/{$this->session['id']}.txt";       
         if(file_exists($file)){
-           $this->datasets=unserialize(file_get_contents($file));
-           if(is_array($this->datasets['data']) &&
-                            count($this->datasets['data'])>0){
-                $this->datasets['read']=true;
-           }else{
-                $this->datasets['read']=false;
+           	$this->dataObjects=unserialize(file_get_contents($file));
+        	foreach($this->dataObjects['data'] as $name=> $dataObject){
+        		$dataObject->setStatus('data','saved');
+           	}	
+        }
+    }
+    
+	public function saveDataObjects(){
+        //save all persisted objects if there is at least one modified
+        $toSave=false;
+        $saveObjects=array();
+        if((is_array($this->dataObjects) &&
+           is_array($this->dataObjects['data']) &&
+           count($this->dataObjects['data'])>0
+        ) ){
+        	foreach($this->dataObjects['data'] as $name=> $dataObject){
+           		if($dataObject->getStatus('save')=='persist'){
+           	  	 	$saveObjects['data'][$name]=$dataObject;
+           	  	    if($dataObject->getStatus('data')=='modified'){
+           	  			$toSave=true;  //only save if at least one modified
+           	  	    }
+           	  	 }	
+           	  }	
            }
-        }
-    }
-
-    public function setDataSet($name,$data){
-        if(!is_array($this->datasets)){
-            $this->readDataSets();
-        }
-        $this->datasets['data'][$name]=$data;
-    }
-
-    public function deleteDataSet($name){
-        if(!is_array($this->datasets)){
-            $this->readDataSets();
-        }
-        unset($this->datasets['data'][$name]);
-    } 
-    
-    public function setDataSetField($fieldName,$value,$dataSetName='',$tableName='',$record=0){
-    	if($dataSetName==''){
-    		$dataSetName=$this->lastDataSetName;
-    	}
-    	$this->lastDataSetName=$dataSetName;
-    	if($tableName==''){
-    	    $tableName=$this->lastTableName;
-    	}
-    	$this->lastTableName=$tableName;
-    	
-    	$dataSet=$this->getDataSet($dataSetName);            
-        $dataSet['table'][$tableName][$record][$fieldName]=$value;
-        $this->setDataSet($dataSetName,$dataSet);
-        
-    }
-
-    public function getDataSetField($fieldName,$dataSetName='',$tableName='',$record=0){
-    	if($dataSetName==''){
-    		$dataSetName=$this->lastDataSetName;
-    	}
-    	$this->lastDataSetName=$dataSetName;
-    	if($tableName==''){
-    	    $tableName=$this->lastTableName;
-    	}
-    	$this->lastTableName=$tableName;
-    	$dataSet=$this->getDataSet($dataSetName);
-    	
-    	if(isset($dataSet['table'][$tableName][$record][$fieldName])){            
-           $ret=$dataSet['table'][$tableName][$record][$fieldName];
-    	}else{
-    		$ret='';
-    	}
-        return $ret;
-    }
-    
-    
-    public function saveDataSets(){
-        //only save if there is data to save or if a read found
-        //data which may have been deleted
-        if((is_array($this->datasets) &&
-           is_array($this->datasets['data']) &&
-           count($this->datasets['data'])>0
-           )
-           ||
-           (isset($this->datasets['read']) &&
-             $this->datasets['read']
-           ) ){
-            $this->datasets['verify']=$this->session['verify'];
-            $this->datasets['time']=time();
+     	if($toSave){ 
+        	$saveObjects['time']=time();
             $dir="{$this->mamurUserDir}/databases/mamur_datasets";
-            file_put_contents("{$dir}/{$this->session['id']}.txt",serialize($this->datasets));
-            if(isset(mamurConfig::$config['sessionCleaned']) && time()-(mamurConfig::$config['sessionCleaned'])>mamurConfig::$config['sessionTimeOut']){
+          
+           	file_put_contents("{$dir}/{$this->session['id']}.txt",serialize($saveObjects));
+         	
+           	$config=mamurConfig::getInstance();	
+           	$configSet=$config->settings;
+            
+            if(isset($configSet->sessionCleaned) && time()-($configSet->sessionCleaned)>$configSet->dataObjectExpiry){  	
                  $donelist=array();
                  $d = dir($dir);
                  $count=0;  //number to processed
@@ -1398,7 +1533,7 @@ public function   __construct(){
                         $status=stat($fullFile);
                         $timeOut=time()-$status['mtime'];
                         //print "<br>$entry expired by $timeOut s<BR>";
-                        if( $timeOut>mamurConfig::$config['sessionTimeOut']){
+                        if( $timeOut>$configSet->dataObjectExpiry){
                           //call back before unlink - allows log plugin to process logs or other
                           //plugins to save data eg shopping carts etc
                           //The plugin must return true unless it is desired to stop the delete to
@@ -1414,14 +1549,30 @@ public function   __construct(){
                     }
                 }
                 $d->close();
+              
                 if( $count<$processLimit){
-                    $this->setConfig('sessionCleaned',time());
-                    $this->upDateConfigFile();
+                    $config->persistSetting('sessionCleaned',time());
+                    
                 }
             }
 
         }
     }
+    
 
+
+    public function deleteDataObject($name){
+    	$ret=false;
+        if(!is_array($this->dataObjects)){
+            $this->readDataObjects();
+        }
+        if(isset($this->dataObjects['data'][$name])){
+          unset($this->dataObjects['data'][$name]);
+          $ret=true;
+        }
+        return $ret;
+    } 
+    
+  
 
  }

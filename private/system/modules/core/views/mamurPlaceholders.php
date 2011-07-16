@@ -105,7 +105,7 @@ class mamurPlaceholders {
         return $title;
 	}
 	
-	public public function http_header($param,$tag){
+	public function http_header($param,$tag){
     	if(isset($param['value'])){
             $headerAction="header('{$param['value']}');";
         }elseif(isset($param['name']) && isset($this->view->templateTags[$tag][$param['name']])){

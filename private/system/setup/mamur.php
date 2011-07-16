@@ -36,7 +36,7 @@ ob_implicit_flush(false);
  * *****************************************************************************
                          	Start file
   						  Mamur Framework
-  Version: 1.1  Copyright (c) 2011 Sygenius Ltd  Date: 22/05/2011
+  Version: 1.1  Copyright (c) 2011 Sygenius Ltd  Date: 16/07/2011
 
   Licence:
     This program is free software: you can redistribute it and/or modify
@@ -109,12 +109,13 @@ abstract class mamurStart{
         $system=$mamur."/system";
 		require($system.'/modules/core/models/mamurConfigData.php');
 		$set=new mamurConfigData();
-	    $set->root=$root;
+	   
 	    $set->startFile=__FILE__;
 		$set->mamur=$mamur;
         $set->system=$system;
-        $set->root=realpath($root);
         $set->public=$publicDir;
+        $set->webBaseDir=$root;      //Base directory of web site
+        
         if(file_exists("$mamur/usersites/user")){
         	$set->user="$mamur/usersites/user";
         }else{
@@ -123,7 +124,9 @@ abstract class mamurStart{
         $set->plugins="$mamur/plugins";
         $set->logDir=$set->user."/errorlogs";
         $set->build=$set->user."/build";
-        $set->uri=$_SERVER['REQUEST_URI'];
+        $set->uri=$_SERVER['REQUEST_URI'];  //used to define page request
+        $set->host=$_SERVER["HTTP_HOST"];   //defines host domain
+        
 		list($set->start_usec, $set->start_sec)= explode(" ", microtime());
 		
 		require($set->system.'/modules/core/models/mamurConfig.php');
@@ -138,7 +141,7 @@ abstract class mamurStart{
 		set_error_handler('mamurErrorHandler');
 		set_exception_handler('mamurExceptionHandler');
 		if(strtolower($set->firePhp)=='yes'){
-			require($set->mamur.'/firephp/FirePHP.class.php');
+			require($set->mamur.'/vendor/firephp/FirePHP.class.php');
 		} 
 
 		//Define the top most autoload function
@@ -161,7 +164,7 @@ abstract class mamurStart{
 			}
 			
 		}
-		//call mmaur controller to process uri according to config set up     
+		//call mamur controller to process uri according to config set up     
  	    mamurController::processUri();  
 	}
 	
@@ -363,5 +366,3 @@ function mamurErrorHandler($errno, $errmsg, $filename, $linenum, $vars)
 
 }
 
-
-ob_end_flush(); //now fush any output
