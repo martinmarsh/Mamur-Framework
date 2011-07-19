@@ -16,6 +16,8 @@ require($system.'/modules/core/models/mamurDataObject.php');
  * Unit tests to validate configuration classes
  * Assumes phpunit has been installed and autoloads
  * @author martinmarsh@sygenius.com
+ * @package mamur
+ * @subpackage test
  *
  */
 class dataObjectTests extends PHPUnit_Framework_TestCase{
@@ -90,7 +92,7 @@ class dataObjectTests extends PHPUnit_Framework_TestCase{
      */
  	 public function testDataObjectAttributes(){	
  		$data=new mamurDataObject();
- 		$this->assertEmpty($data->getAttribute('myattrib'));
+ 		$this->assertNull($data->getAttribute('myattrib'));
  		$data->setAttribute('myattrib',"attribute value 1");
  		$this->assertEquals("attribute value 1",$data->getAttribute('myattrib'));
     	$this->assertEquals('modified',$data->getStatus('data'));

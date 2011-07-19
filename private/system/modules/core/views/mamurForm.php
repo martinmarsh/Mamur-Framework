@@ -1,10 +1,38 @@
  <?php
+ /**
+ * This file contains the core view Class - mamurForm
+ *  Licence:
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, version 3 of the License.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * @name mamurForm
+ * @package mamur
+ * @subpackage coreView
+ * @version 110
+ * @mvc view
+ * @release Mamur 1.10
+ * @releasetag 110
+ * @author Martin Marsh <martinmarsh@sygenius.com>
+ * @copyright Copyright (c) 2011,Sygenius Ltd  
+ * @license http://www.gnu.org/licenses GNU Public License, version 3                  
+ *  					          
+ */ 
+ 
 
-class mamurFormPlaceholders{
+class mamurForm{
 
-      private $view,$dataSet,$dataSetName,$dataSetTable,$dataSetRow,$protection,$actionOverRide,
-              $action,$cancel,$actionFunc,$cancelFunc,$request,$resubmit,$errorFormStr,
-              $selectDataValue,$selectDataName,$inSelect;
+      private $view,$dataOject,$dataObjectName,$formObjectName,$formName,$formId,
+       			$dataSetTable,$dataSetRow,$protection,
+      			$actionOverRide,$action,$cancel,$actionFunc,$cancelFunc,$request,$resubmit,
+      			$errorFormStr,$selectDataValue,$selectDataName,$inSelect;
 
       function __construct($setModel,$setView){
       	
@@ -12,10 +40,13 @@ class mamurFormPlaceholders{
          $this->model=$setModel;
          $this->view=$setView;
 
-         $this->dataSet=array();
-         $this->dataSetName='default';
+         $this->dataObject=null;
+         $this->dataObjectName='defaultForm';
          $this->dataSetTable='default';
          $this->dataSetRow=0;
+         
+         $this->formName='';
+         $this->formId='';
          
          $this->protection='html';  //html is default using htmlspecialchars
          $this->request=&$_GET;
@@ -38,7 +69,278 @@ class mamurFormPlaceholders{
       }
     
 
+     /**
+      * 
+      * Form placeholder inserts a php to invoke method
+      * @param string $serparams - serialized parameter list
+      */
+     public function doForm($serparams){
+     	$attr=unserialize($serparams);
+     	$lTag="form";
+     	$str="<$lTag";
+        foreach($attr as $attrName=>$value){
+        	$lAttrName=strtolower($attrName);
+            $lValue=strtolower($value);
+            if(substr($attrName,0,1)=='*'){
+            	switch($lAttrName){
+            		case '*data':
+						$this->dataObjectName=$value;
+  						break;
+					case '*table':
+						$this->dataSetTable=$value;
+						break;
+                                     
+					case '*rowid':
+						$this->dataSetRow=$value;
+						break;
+					case '*rownumber':
+						$this->dataSetRow=intval($value);
+						break;
+					case '*protection':
+						$this->protection=$value;
+						break;
+              		case '*resubmit':
+                   		$this->resubmit=$value;
+                		break;
+               		case '*errmin':
+             		case '*errmax':
+               		case '*error':
+           			case '*errmessage':
+     				case '*errrequired':
+                   		$this->errorFormStr[$lAttrName]=htmlspecialchars($value,ENT_NOQUOTES,'UTF-8',false);
+                		break;
+            		case '*onokfunction':
+         			case '*actionfunction':
+                		$this->actionFunction=$value;
+                		break;
+          			case '*oncancelfunction':
+                  		$this->cancelFunction=$value;
+                   		break;
+             		case '*oncancel':
+         			case '*cancel':
+                 	 	$this->cancel=$value;
+                 	  	break;
+               		case '*onok':
+              		case '*action':
+               			$this->action=$value;
+                 		break;
+             		case '*actionoverride':
+                  		$this->actionOverRide=$value;
+                  		break;
 
+				}
+            }else{
+             	//action is filtered out as it depends on validation
+				switch($lAttrName){
+                 	case 'method':             
+                 		if($lValue=='post'){
+                        	$this->request=&$_POST;
+                     	}else{
+                          	$this->request=&$_GET;
+                 		}
+                 		$str.=" $attrName=\"$value\"";
+                		break;
+             		case 'action':
+                  		$this->action=$value;
+                      	break;
+             		case 'id':
+             			$this->formId=$value;
+             			$str.=" $attrName=\"$value\"";
+             			break;
+             		case 'name':
+             			$this->formName=$value;
+             			$str.=" $attrName=\"$value\"";
+             			break;
+             			  	
+         			default:
+                   		$str.=" $attrName=\"$value\"";
+				}
+             }
+         }//end for each
+         $errorMessages=array();
+         $checkBox=array();           
+         $dataObject=$this->model->getDataObject($this->dataObjectName);
+              
+         //get dataObject if new (null formValid) then ignore any post as first time page
+         //has been prepared. If security mamurNonce is returned which matches the
+         //form then it is valid post (This is not a nonce check)
+         
+		if(is_null($dataObject->getAttribute('formObjectName'))){
+			$this->formObjectName=$this->model->getRandomString(8); 
+         	if(!empty($this->formId)){
+         		$this->formObjectName='form_'.$this->formId.'_'.$this->model->getRandomString(6); 
+         	}elseif(!empty($this->formName)){
+         	 	$this->formObjectName='form_'.$this->formName.'_'.$this->model->getRandomString(6); 
+         	}else{
+         		$this->formObjectName='form_'.$this->model->getRandomString(16); 
+         	}
+        	$formObject=$this->model->getDataObject($this->formObjectName);
+         	$dataObject->setAttribute('formObjectName',$this->formObjectName);
+
+         	$formObject->formValid=false;
+            $formObject->action=$this->action;
+            $formObject->override=$this->actionOverRide;
+            $formObject->cancel=$this->cancel;
+   			$formObject->new=true; 
+            $formObject->errorMessages=array();
+            $formObject->check=array();
+            $formObject->checkBox=array();
+            $formObject->hasExternalErrors=false;
+                          
+			$str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
+			
+		}elseif(isset($this->request['mamurNonce'])
+                && $this->request['mamurNonce']==$formObject->getNonce()
+        ){
+            //now validate form against input and set action or redirect
+            $this->formObjectName=$dataObject->getAttribute('formObjectName');
+            $formObject=$this->model->getDataObject($this->formObjectName);
+            
+  			$formObject->formValid=true;
+            $formObject->new=false;
+            
+            $errorMessages=$formObject->getAttribute('errorMessages');
+            $checkBox= $formObject->getAttribute('checkBox');           
+            foreach($dataObject->getRecord() as $fieldName=>$fieldValue){
+            	if(isset($this->request[$fieldName])){
+                	//Validate input   
+                	$newValue=$this->request[$fieldName];
+                    if(isset($checkBox[$fieldName])){
+                        if($checkBox[$fieldName]!=''){
+                           	$newValue=$checkBox[$fieldName];
+                        }else{
+                        	$newValue='1';	
+                        }		
+                    }
+                                     
+                	$valid=$this->validate($newValue,$fieldName);
+          			$dataObject->$fieldName=trim(htmlspecialchars($newValue,ENT_NOQUOTES,'UTF-8',false));
+                    if($valid===true){           
+                    	$errorMessages=array();                   
+                    }else{
+                        $errorMessages=$valid;
+                        $formObject->formValid=false;
+                  	}
+                    if($formObject->formValid && $formObject->hasExternalErrors){
+                       	$formObject->formValid=false;
+                        $errorMessages=$formObject->getAttribute('errorExternalMessages');
+                        $formObject->hasExternalErrors=false;
+                        $formObject->setAttribute('errorExternalMessages',array());
+                    }
+   				}elseif(isset($dataObject->$fieldName)){
+   					//this nulls anything which is not returned!
+                         $dataObject->$fieldName='';                              				
+                }
+                             
+   			}//end for each field name
+   			
+           	//now process completed and valid form
+            if($formObject->formValid){
+            	//process special functions on form completion
+                if($this->actionFunction!='' ){
+                                      $dir=dirname($this->actionFunction);
+                                      if(empty($dir)|| $dir=='.' || $dir=='/' ){
+                                         $dir=dirname(__FILE__);
+                                      }else{
+                                         $dir=$this->mamur->getPluginDir($dir);
+
+                                      }
+                                      $file=basename($this->actionFunction);
+
+                                      include_once($dir.'/'.$file);
+                 }
+                                 //need to check status after processing
+                 if($formObject->formValid){
+                                    //in case of aceptance required
+                                    if( (isset($this->dataSet['override']) &&
+                                        $this->dataSet['override']=='noredirect')||
+                                        $this->actionOverRide=='noredirect'){
+                                        $this->dataSet['overRidenAction']='noredirect';
+
+                                    }else{
+                                    	$this->mamur->setDataSet($this->dataSetName,$this->dataSet);
+ 
+                                        $str.=" action=\"{$this->action}\" ";
+                                        $this->view->redirect($this->action);
+                                    }
+                }
+           	}else{
+            	$str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
+            }
+            
+        }else{
+        	$this->formObjectName=$dataObject->getAttribute('formObjectName');
+            $formObject=$this->model->getDataObject($this->formObjectName);
+        	
+            if($formObject->formValid && !$formObject->new ){
+            	print $this->resubmit;
+            }
+           	$str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
+        }
+
+        $str.=" >";
+        print $str;
+
+        //set the dataset Nonce a security one time use id
+        $formObject->setNonce();
+         
+        print "\n<input type=\"hidden\" name=\"mamurNonce\" value=\"{$formObject->getNonce}\" />\n";
+        if(!$formObject->formValid && !$formObject->new ){
+			print $this->errorFormStr['*error'];
+        }
+        
+        $formObject->setAttribute('errorMessages',$errorMessages);
+      	$formObject->persist();
+      	$dataObject->persist();
+      }
+      
+      
+      
+      
+      
+      public function doInput($serparams){
+      	$param=unserialize($serparams);
+      	print "******* Input ********";
+      }
+      
+      public function doTextarea($serparams){
+      	$param=unserialize($serparams);
+      		print "******* Input ********";
+      }
+      
+	  public function doSelect($serparams){
+	  	$param=unserialize($serparams);
+      		print "******* Input ********";
+      }
+      
+  	  public function endSelect($serparams){
+  	  	$param=unserialize($serparams);
+      		print "******* Input ********";
+      }
+      
+ 	  public function optionList($serparams){
+ 	  	$param=unserialize($serparams);
+      		print "******* Input ********";
+      }
+      
+      public function doOption($serparams){
+      	$param=unserialize($serparams);
+      		print "******* Input ********";
+      }
+      
+      public function doEndform($serparams){
+      	$param=unserialize($serparams);
+      		print "******* End Form ********";
+      }
+   
+    
+    
+      
+      
+      
+      
+      
+     
       public function generalPlaceholder($attr,$tag){
   /*
   		  Form tags process the form and update a dataset
@@ -68,183 +370,7 @@ class mamurFormPlaceholders{
                    /* print "Example tag test passed:
                      {$attribute['name']} {$attribute['file']} {$attribute['attr1']}
                      {$attribute['attr2']}";*/
-                    $str="<$lTag";
-                    foreach($attr as $attrName=>$value){
-                       $lAttrName=strtolower($attrName);
-                       $lValue=strtolower($value);
-                       if(substr($attrName,0,1)=='*'){
-                            switch($lAttrName){
-                                case '*data':
-                                	 if(!class_exists($value){
-                                	 	$this->dataObject=new mamurDataObject();
-                                	 }
-                                     break;
-                                case '*table':
-                                     $this->dataSetTable=$value;
-                                     break;
-                                case '*rowid':
-                                     $this->dataSetRow=$value;
-                                     break;
-                                case '*rownumber':
-                                     $this->dataSetRow=intval($value);
-                                     break;
-                                case '*protection':
-                                     $this->protection=$value;
-                                     break;
-                                 case '*resubmit':
-                                    $this->resubmit=$value;
-                                    break;
-                                 case '*errmin':
-                                 case '*errmax':
-                                 case '*error':
-                                 case '*errmessage':
-                                 case '*errrequired':
-                                      $this->errorFormStr[$lAttrName]=htmlspecialchars($value,ENT_NOQUOTES,'UTF-8',false);
-                                    break;
-                                 case '*onokfunction':
-                                 case '*actionfunction':
-                                    $this->actionFunction=$value;
-                                    break;
-                                 case '*oncancelfunction':
-                                    $this->cancelFunction=$value;
-                                    break;
-                                 case '*oncancel':
-                                 case '*cancel':
-                                    $this->cancel=$value;
-                                    break;
-                                 case '*onok':
-                                 case '*action':
-                                    $this->action=$value;
-                                    break;
-                                 case '*actionoverride':
-                                    $this->actionOverRide=$value;
-                                    break;
-
-                            }
-                       }else{
-                            //action is filtered out as it depends on validation
-
-
-                            switch($lAttrName){
-                                case 'method':
-                                     if($lValue=='post'){
-                                        $this->request=&$_POST;
-                                     }else{
-                                        $this->request=&$_GET;
-                                     }
-                                     $str.=" $attrName=\"$value\"";
-                                     break;
-                                case 'action':
-                                     $this->action=$value;
-                                     break;
-                                default:
-                                     $str.=" $attrName=\"$value\"";
-                            }
-
-
-                       }
-                    }
-                    //get dataset if new then ignore any post as first time page
-                    //is seen
-                    $this->dataSet=$this->mamur->getDataSet($this->dataSetName);
-                   
-                    if(!isset($this->dataSet['formValid'])){
-                          $this->dataSet['action']=$this->action;
-                          $this->dataSet['override']=$this->actionOverRide;
-                          $this->dataSet['cancel']=$this->cancel;
-                          $this->dataSet['new']=true;
-                          $this->dataSet['formValid']=false;
-                          $str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
-                    }elseif(isset($this->request['mamurSecId'])
-                             && $this->request['mamurSecId']==$this->dataSet['mamurSecId']
-                             && isset($this->dataSet['table'])){
-                         //now validate form against input and set action or redirect
-                         $this->dataSet['formValid']=true;
-                         $this->dataSet['new']=false;
-                         foreach($this->dataSet['table'][$this->dataSetTable][$this->dataSetRow] as $fieldName=>$fieldValue){
-                             if(isset($this->request[$fieldName])){
-                                //Validate input   
-                                $newValue=$this->request[$fieldName];
-                                if(isset($this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$fieldName])
-                              	 ){
-                              	    if($this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$fieldName]!=''){
-                              		      $newValue=$this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$fieldName];
-                                 		}else{
-                              			 $newValue='1';	
-                              		}		
-                                }
-                                $valid=$this->validate($newValue,$fieldName);
-                                $this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$fieldName]=
-                                        trim(htmlspecialchars($newValue,ENT_NOQUOTES,'UTF-8',false));
-                                if($valid===true){
-                                   $this->dataSet['errormessage'][$this->dataSetTable][$fieldName]='';
-                                }else{
-                                   $this->dataSet['errormessage'][$this->dataSetTable][$fieldName]=$valid;
-                                   $this->dataSet['formValid']=false;
-                                }
-                                if($this->dataSet['formValid'] &&
-                                    isset($this->dataSet['external_errormessage'][$this->dataSetTable][$fieldName])){
-                                    $this->dataSet['formValid']=false;
-                                    $this->dataSet['errormessage'][$this->dataSetTable][$fieldName]=$this->dataSet['external_errormessage'][$this->dataSetTable][$fieldName];
-                                    unset($this->dataSet['external_errormessage'][$this->dataSetTable][$fieldName]);
-                                }
-                             }elseif(isset($this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$fieldName])){
-                               	     $this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$fieldName]='';                              				
-                            }
-                             
-                         }
-                         //now process completed and valid form
-                         if($this->dataSet['formValid']){
-                                //process special functions on form completion
-                                 if($this->actionFunction!='' ){
-                                      $dir=dirname($this->actionFunction);
-                                      if(empty($dir)|| $dir=='.' || $dir=='/' ){
-                                         $dir=dirname(__FILE__);
-                                      }else{
-                                         $dir=$this->mamur->getPluginDir($dir);
-
-                                      }
-                                      $file=basename($this->actionFunction);
-
-                                      include_once($dir.'/'.$file);
-                                 }
-                                 //need to check status after processing
-                                 if($this->dataSet['formValid']){
-                                    //in case of aceptance required
-                                    if( (isset($this->dataSet['override']) &&
-                                        $this->dataSet['override']=='noredirect')||
-                                        $this->actionOverRide=='noredirect'){
-                                        $this->dataSet['overRidenAction']='noredirect';
-
-                                    }else{
-                                    	$this->mamur->setDataSet($this->dataSetName,$this->dataSet);
- 
-                                        $str.=" action=\"{$this->action}\" ";
-                                        $this->view->redirect($this->action);
-                                    }
-                                 }
-                         }else{
-                                 $str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
-                         }
-                    }else{
-                        if($this->dataSet['formValid'] && !$this->dataSet['new']  ){
-                            print $this->resubmit;
-                        }
-                        $str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
-                    }
-
-                    $str.=" >";
-                    print $str;
-
-                    //set the dataset secure one time use id
-                    $this->dataSet['mamurSecId']=$this->mamur->getRandomString(16);
-                    print "\n<input type=\"hidden\" name=\"mamurSecId\" value=\"{$this->dataSet['mamurSecId']}\" />\n";
-                    if(!$this->dataSet['formValid'] && !$this->dataSet['new']  ){
-
-                        print $this->errorFormStr['*error'];
-                    }
-                    break;
-
+                    
 
             case 'input':
                     $str="<$lTag";

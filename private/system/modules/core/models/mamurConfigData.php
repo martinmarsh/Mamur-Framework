@@ -8,7 +8,7 @@
  * $dataClass->$myVariable->$myAttribute can be used.
  * @name mamurConfigData
  * @package mamur 
- * @subpackage config
+ * @subpackage coreModel
  * @version 105
  * @mvc model
  * @release Mamur 1.10

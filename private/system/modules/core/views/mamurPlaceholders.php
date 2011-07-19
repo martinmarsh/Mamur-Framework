@@ -1,4 +1,31 @@
 <?php
+/**
+ * This file contains the core view Class - mamurPlaceholders
+ *  Licence:
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, version 3 of the License.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * @name mamurPlaceholders
+ * @package mamur
+ * @subpackage coreView
+ * @version 110
+ * @mvc view
+ * @release Mamur 1.10
+ * @releasetag 110
+ * @author Martin Marsh <martinmarsh@sygenius.com>
+ * @copyright Copyright (c) 2011,Sygenius Ltd  
+ * @license http://www.gnu.org/licenses GNU Public License, version 3                  
+ *  					          
+ */ 
+ 
 class mamurPlaceholders {
 
 	private $model;
@@ -159,7 +186,7 @@ class mamurPlaceholders {
 
     public function  date($param){
 		$parms=serialize($param);
-    	return "<?php \$this->doDatePlaceholder($parms); ?>";
+    	return "<?php \$this->doDatePlaceholder('$parms'); ?>";
     }
 	
    
@@ -175,7 +202,7 @@ class mamurPlaceholders {
     
     public function nonce($param){
     	$parms=serialize($param);
-    	print "<?php \$this->doNoncePlaceholder('$parms'); ?>";
+    	return "<?php \$this->doNoncePlaceholder('$parms'); ?>";
     }
   
     
@@ -243,6 +270,51 @@ class mamurPlaceholders {
      	}         
       	return $selected;
     }
+    
+    
+    //form tags
+    
+     public function form($param){
+      	$parms=serialize($param);
+    	return "<?php \$mamurFormObj=new mamurForm(\$this->model,\$this);
+    	\$mamurFormObj->doForm('$parms'); ?>";
+      }
+      
+      public function input($param){
+      	 $parms=serialize($param);
+    	 return "<?php \$mamurFormObj->doInput('$parms'); ?>";
+      }
+      
+      public function textarea($param){
+      	 $parms=serialize($param);
+    	 return "<?php \$mamurFormObj->doTextArea('$parms'); ?>";
+      }
+      
+	  public function select($param){
+      	 $parms=serialize($param);
+    	 return "<?php \$mamurFormObj->doSelect('$parms'); ?>";
+      }
+      
+  	  public function endselect($param){
+      	 $parms=serialize($param);
+    	 return "<?php \$mamurFormObj->doEndSelect('$parms'); ?>";
+      }
+      
+ 	  public function optionlist($param){
+      	 $parms=serialize($param);
+    	 return "<?php \$mamurFormObj->doOptionList('$parms'); ?>";
+      }
+      
+      public function option($param){
+      	 $parms=serialize($param);
+    	 return "<?php \$mamurFormObj->doOption('$parms'); ?>";
+      }
+      
+      public function endform($param){
+      	 $parms=serialize($param);
+    	 return "<?php \$mamurFormObj->doEndForm('$parms'); ?>";
+      }
+   
     
     
     

@@ -15,28 +15,17 @@ require($system.'/modules/core/models/mamurConfig.php');
 require($system.'/modules/core/models/mamurDataObject.php');
 require($system.'/modules/core/models/mamurModel.php');
 
-/**
- * Mamu Autoload Class function registerred at start up
- * Loads a class configured in confguration.xml
- */
-function mamurAutoClassLoad($name){
-   $config=mamurConfig::getInstance();
-   $classes=$config->classes;	
-   if (isset($classes->$name)){
-   	   $type=$classes->$name->type;
-   	   $file=$config->settings->$type."/modules/{$classes->$name->module}/{$classes->$name->mvc}/$name.php";
-   	   require_once($file);
-   }
-}
 
 /**
  * 
  * Unit tests to validate configuration classes
  * Assumes phpunit has been installed and autoloads
  * @author martinmarsh@sygenius.com
+ * @package mamur
+ * @subpackage test
  *
  */
-class dataObjectTests extends PHPUnit_Framework_TestCase{
+class modelDataObjectTests extends PHPUnit_Framework_TestCase{
 	
 	public static $model;
 	
@@ -68,11 +57,12 @@ class dataObjectTests extends PHPUnit_Framework_TestCase{
        
 		//Define the top most autoload function
 		//In mamur you can use this function to add aditional autoloaders
-		spl_autoload_register('mamurAutoClassLoad',false);
+		spl_autoload_register('testAutoClassLoad',false);
 		
 	
 		
         self::$model=new mamurModel();
+        self::$model->setUpSession();
 	
     }
 	
@@ -136,6 +126,7 @@ class dataObjectTests extends PHPUnit_Framework_TestCase{
     	$this->assertLessThan(1000,strlen($_COOKIE['session']));
     	//test that a new model will read the data back
     	$model2=new mamurModel();
+    	$model2->setUpSession();
     	$dataNew=$model2->getDataObject('newObject');
     	$data2=$model2->getDataObject('testObject');
     	
@@ -180,6 +171,7 @@ class dataObjectTests extends PHPUnit_Framework_TestCase{
     	$this->assertLessThan(1000,strlen($_COOKIE['session']));
     	//test that a new model will read the data back
     	$model2=new mamurModel();
+    	$model2->setUpSession();
     	$dataNew=$model2->getDataObject('newObject');
     	$data2=$model2->getDataObject('testObject');
     	$this->assertEquals($data,$data2);
@@ -217,6 +209,7 @@ class dataObjectTests extends PHPUnit_Framework_TestCase{
     	$this->assertLessThan(1000,strlen($_COOKIE['session']));
     	//test that a new model will read the data back
     	$model2=new mamurModel();
+    	$model2->setUpSession();
     	$dataNew=$model2->getDataObject('newObject');
     	$data2=$model2->getDataObject('testObject');
     	$this->assertEquals($data,$data2);
@@ -252,6 +245,7 @@ class dataObjectTests extends PHPUnit_Framework_TestCase{
     	$this->assertLessThan(1000,strlen($_COOKIE['session']));
     	//test that a new model will read the data back
     	$model2=new mamurModel();
+    	$model2->setUpSession();
     	$dataNew=$model2->getDataObject('newObject');
     	$data2=$model2->getDataObject('testObject');
     	$this->assertEquals($data,$data2);
@@ -264,4 +258,21 @@ class dataObjectTests extends PHPUnit_Framework_TestCase{
     }
     
 }
+
+/**
+ *  Autoload Class function registerred at start up
+ * Loads a class configured in confguration.xml
+ * @author martinmarsh@sygenius.com
+ * @ignore
+ */
+function testAutoClassLoad($name){
+   $config=mamurConfig::getInstance();
+   $classes=$config->classes;	
+   if (isset($classes->$name)){
+   	   $type=$classes->$name->type;
+   	   $file=$config->settings->$type."/modules/{$classes->$name->module}/{$classes->$name->mvc}/$name.php";
+   	   require_once($file);
+   }
+}
+
 

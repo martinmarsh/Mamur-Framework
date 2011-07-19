@@ -15,7 +15,7 @@
  *  
  * @name mamurView
  * @package mamur
- * @subpackage core
+ * @subpackage coreView
  * @version 110
  * @mvc view
  * @release Mamur 1.10
@@ -27,9 +27,22 @@
  */ 
 
 /**
- * mamurView is a basic class to print out pages
+ * mamurView is a basic class to print out pages.
+ * Pages are prepared in two stages.
+ * 
+ * First content is agregated into a single page replacing placeholder tags with either
+ * static content or php function calls to the required dynamic view method.
+ * If set in the configuration the results of the first stage can be saved to a page build
+ * area so that it is not necessary to repeat the first stage on every page request.
+ * This is a sort of cache in that pages have to be rebuilt if their static content or templates
+ * are edited.
+ * The second stage renders the page using PHP to replace the php tags with dynamic output.
+ * All output is bufferred so page headers and redirection can be requested at any stage.
+ * The controller instructs the page buffer built by view to be flushed which sends
+ * the response to the page request.
+ * 
  * @package mamur
- * @subpackage core
+ * @subpackage coreView
  */
 
  class mamurView {

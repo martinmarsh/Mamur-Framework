@@ -8,7 +8,7 @@
      <set installed="done"/>
 
      <!-- api ID is new on first install, when installed should not be changed  -->
-     <set apiId="F196021831LHFWZ"/>
+     <set apiId="F197105039PH1H3"/>
 	 
 	 <!-- page build - set to yes to enable pages to be pre-built in php from content files and globals reducing page
 	  load times, however once a page is built changes to static content will no longer be shown until the built file
@@ -46,7 +46,10 @@
           session id for use by plugins to save session datasets -->
      <set allowSessionCookie="yes"/>
      
-     <!-- Normally rijndael-256 if available in mcrypt or set to none -->
+      <!-- use rijndael-256 (also known as AES 256) if available,
+          good alternatives are twofish (faster) and blowfish (older)
+          if there is no mcrypt available set to 'none' to use weak Obfuscation
+          All even none have MAC tamper protection-->
      <set cipher="rijndael-256"/>
 
      <!-- set to yes to allow permanent location id cookie to be set supports metrics
@@ -59,18 +62,15 @@
            -->
      <set dataObjectExpiry="36000"/>
           
-     <!-- set sessionTimeOut="10800" to abort a sessions after 3 hrs of inactivity
-          this will remove dataObjects if a reply is recieved after this time.
-          This gives a maximum of 3 hours re-use a stolen coookie during non-critical
-          activity at other times the loginTimeOut and cookie linked nonce mechanism reduces
-          attack window.
+     <!-- set sessionTimeOut="10800" so that after 3 hrs of inactivity the next request will
+          end session and remove dataObjects.
+          Note: The loginTimeOut and cookie linked nonce mechanism reduces attack window.
+          during critical operations
           This has nothing to do with php sessions -->
      <set sessionTimeOut="10800"/>
 
-     <!-- set loginTimeOut="1800" to log out user after 30 mins of inactivity login does
-          not depend on sessions and can be longer or shorter-->
+     <!-- set loginTimeOut="1800" to log out user after 30 mins of inactivity -->
      <set loginTimeOut="1800"/>
-
 
      <!-- The protected tag will if not logged, cause a redirect to this page by default
           note if you delete loginPage setting - login.htm is assumed anyway.-->
@@ -80,7 +80,7 @@
      <set sessionCleaned="1305247723"/>
 
      <!-- salt string of random characters >116 set to "new" to re-randomise for security  -->
-     <set salt="2fZfXsw3VjxhoFa28h2dyydDXyXPLz97HAeU628rbS9icmFLCgKLkSFcJppBiaGNXYBzIXwkZ7czucYqFHZZXRUEu2xBbhkhmOhSrfkRTF8VpLh6zFQZa"/>
+     <set salt="nK4aiE7sW4MFlnklnafCnXemCWgUGpiaUt77Sqmuzml22HTVZm97DUt8nKRp9yXDkuyLNPFbfQ5IjOYPUCy5DZcDBZ6LiBEaLOzluSSdQ26jlbXp3eG7w"/>
 	 
      <!-- version status -->
 

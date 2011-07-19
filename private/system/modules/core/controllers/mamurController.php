@@ -38,7 +38,7 @@
  * may define another controller which optionally may run a different
  * mvc pattern to respond to certain page requests
  * @package mamur
- * @subpackage core
+ * @subpackage coreController
  */
 abstract class mamurController{
 	
@@ -55,6 +55,8 @@ abstract class mamurController{
 		$config=mamurConfig::getInstance();
 		$set=$config->settings;	
 		self::$model=new mamurModel();
+		//if permited by config set or retrieve locid permanent cookie
+		self::$model->locidCookie();
 					
 		//find appropriate controller to dispatch to
 		$controllerToUse="mamurMainController"; 
@@ -153,17 +155,13 @@ abstract class mamurController{
            		self::$view->directPhpView();
 
         	}else{
-          	  //This is a STANDARD URL request
-          	  
+          	  //This is a STANDARD URL request       	  
           	  $builtFile=$config->settings->build.self::$model->getPageDir().'/'.self::$model->getPageName().".php";
           	  if($config->settings->pageBuild=='yes' && file_exists($builtFile)){
           	  	self::$view->showBuiltPage($builtFile);
           	  }else{
-	  
-	        	  //for page templating
-	              //control now requests that model reads the page data
-	              //and any xml page and template definitions
-	             self::$model->readPageXML();
+	        	   //obtain details about a pages meta data including which template to use
+	             self::$model->processPageMetaData();
 	               //We now instruct view to print via templating
 	               //the view will ask the model for status and processing of errors
 	             self::$view->templatedView();

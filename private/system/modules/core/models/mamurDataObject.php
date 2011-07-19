@@ -15,7 +15,7 @@
  * a query.
  * @name mamurDataObject 
  * @package mamur 
- * @subpackage model
+ * @subpackage coreModel
  * @version 105
  * @mvc model
  * @release Mamur 1.10
@@ -181,7 +181,7 @@ class mamurDataObject{
     }
     
     public function getAttribute($name){
-    	$attr=false;
+    	$attr=null;
     	if(isset($this->attributes[$name])){
     		$attr=$this->attributes[$name];
     	}
@@ -215,6 +215,50 @@ class mamurDataObject{
     	$this->setStatus('data','modified');
     	return true;
     }
+    
+     /**
+     * 
+     * A nonce is a number used once and can be used to prevent forms
+     * from being resent. They also provide a security check.
+     * see getNonce for more details
+     */
+    public function setNonce($prefix='n'){
+    	$nonce=md5(mt_rand().uniqid(true));
+    	$this->setAttribute('__nonce',$nonce);
+        $this->persist();
+        //this causes a new session cookie to be generated
+        $this->session['nonces'][$this]=$nonce;
+        return $nonce;
+    }
+
+    /**
+     * 
+     * A named Nonce value will be returned if it has been set.
+     * For security nonces are saved to server side session dataObject
+     * as well as in the encryted session cookie.
+     * If security fails the nonce will be set to false which may indicate
+     * a stolen session cookie and a security action such as logging is required.
+     * Set a nonce in a dataObject relating to form status to prevent reuse of
+     * a form and give some security against stolen session coookies.
+     * Also set one in a dataObject which might control access to a critical
+     * area of the web site.
+     * The nonce value must still be compaired to the value returned by the form
+     * and a mismatch indcates that the form may have been previously submitted
+     * @return nonce - value of nonce, null if not known, false if security violation
+     */
+    public function getNonce(){
+    	$ret=null;
+    	$nonce=$this->setAttribute('__nonce');
+    	if(isset($this->session['nonces'][$this])){
+    		if($this->session['nonces'][$this]===$nonce){
+    			$ret=$nonce;
+    		}else{
+    			$ret=false;
+    		}
+    	}
+        return $ret;
+    }
+    
     
     /**
      * 

@@ -18,6 +18,8 @@ require($system.'/modules/core/models/mamurModel.php');
  * Unit tests to validate core mamurModel class
  * Assumes phpunit has been installed and autoloads
  * @author martinmarsh@sygenius.com
+ * @package mamur
+ * @subpackage test
  *
  */
 class coreMamurModeltest extends PHPUnit_Framework_TestCase{

@@ -29,9 +29,36 @@
 
 
 /**
- * mamurModel is a basic class to access all module related data and files
+ * mamurModel is the main model class to access data and files
+ * and provides methods to change the model state.  In our MVC
+ * model we place all business logic, object model entities and interfaces
+ * in the model and have avoided creating a library of general
+ * methods and functions which can be used directly by views and controllers.  
+ * Everthing which is not a controller or view related is considered to be
+ * part of the model.
+ * The model has 2 main classes this one and mamurConfig which contains only
+ * configuration and dynamic settings.
+ * In the model there are two data object classes:
+ * 
+ *  1) mamurConfigData - a class used by mmaurConfig to create configuration
+ *  entities for each type of configuation information eg settings, globals,
+ *  classes, placeholders etc.
+ *  
+ *  2) mamurDataObject - a container class which allows data and class instances
+ *  to be  encapsulated in a primitive object which can be persisted between
+ *  page requests. Similar items can be saved in a named mamurDataObject so
+ *  that it is easier to persist and delete them as a group. Alternatively,
+ *  mamurDataObject can contain one or more data records from a database query
+ *  Status and Atrributes can be set for mamurDataObjects to help process them
+ *  say through a form.
+ *  
+ *  The main model handles the creation, storage, retieval, garbage collection of
+ *  mamurDataObjects and acts as an abstraction layer from the session storage
+ *  mechanism. mamurDataObjects are created or retrieved from session store on demand
+ *  by using the main model's getDataObject('objectname') method.
+ *  
  * @package mamur
- * @subpackage core
+ * @subpackage coreModel
  */
 
 class mamurModel {
@@ -98,6 +125,7 @@ class mamurModel {
 		$this->phpParameters=array();
 		$this->session=array();
 		$this->inSession=false;
+		$this->locidAccepted=false;
      
 		$update=false;
 		if($set->salt=='new'){
@@ -116,6 +144,26 @@ class mamurModel {
 		}
 	}
 	
+	/**
+	 * 
+	 * Reads and saves status of user location cookie a value
+	 * value set for each permanent cookie which indicates a
+	 * different user account or a phyiscal different machine
+	 * If a user is logged in but uses different locid this
+	 * indicates the probable use at different locations eg
+	 * home/office but could be in the same building or a mobile device
+	 */
+	public function locidCookie(){
+		$set=mamurConfig::getInstance()->settings;
+		if(!isset($_COOKIE["locid"]) && $set->allowPermCookie=='yes' ){
+        	$this->setLocidCookie();
+     	}else{
+         	$this->locid=$_COOKIE["locid"];
+        	$this->locidAccepted=true;
+         	//tie cookies together for additional security check
+        	$this->session['locid']=$this->locid;
+    	}
+	}
 
 	/**
 	 * 
@@ -156,20 +204,14 @@ class mamurModel {
 		$this->session['timer']=time();
        
 		if(!isset($this->session['user'])){
-			$this->session['user']['name']='unknown';
-			$this->session['user']['id']='';
-			$this->session['user']['loggedin']=false;
-			$this->session['user']['status']=0;
-			$this->session['user']['statusName']='unknown';
-			$this->session['user']['group']='unknown';
-			$this->session['user']['time']=time();
+			//set null user
+			$this->setUser('unknown','',false);
+		}elseif($this->session['user']['loggedin'] &&
+			time()-$this->session['user']['time'] > $set->loginTimeOut ){
 			//log out if time out exceeded - reset timer and compute cookie 
 			//on each page request whilst logged in.
 			//Note logOutFlag is set so that log out
-			//can be cancelled by scripts and plugins
-
-		}elseif($this->session['user']['loggedin'] &&
-			time()-$this->session['user']['time'] > $set->loginTimeOut ){
+			//can be cancelled by scripts and plugins				
            	$this->logOutFlag=true;
            	$this->session['user']['time']=time();
 		}elseif($this->session['user']['loggedin']){
@@ -179,13 +221,9 @@ class mamurModel {
            	$this->session['page']['edit']=false;
 		}
 		
-		if(!isset($_COOKIE["locid"]) && $set->allowPermCookie=='yes' ){
-        	$this->setLocidCookie();
-     	}else{
-         	$this->locid=$_COOKIE["locid"];
-        	$this->locidAccepted=true;
-         	//tie cookies together for additional security check
-        	$this->session['locid']=$this->locid;
+		
+    	if($this->locidAccepted){
+    		$this->session['locid']=$this->locid;
     	}
 		
 		if(!$this->inSession){
@@ -596,7 +634,7 @@ class mamurModel {
 
 	/**
 	 * 
-	 * Decytpt a String using rijndael-256 and optionally
+	 * Decytpt a String using set cipher and optionally
 	 * 2 security integers to identify the salt bases to use
 	 * @param string $value - base64 encoded 256bit encypted data
 	 * @param integer $a
@@ -657,7 +695,7 @@ class mamurModel {
 
     /**
 	 * 
-	 * encrypt a String using rijndael-256 and optionally
+	 * encrypt a String using set cipher and optionally
 	 * 2 security integers to identify the salt bases to use
 	 * @param string $value 
 	 * @param integer $a (must be less than 70)
@@ -767,7 +805,7 @@ class mamurModel {
      * @param bool $upperonly
      */
 
-    public function getRandomString($length,$upperonly=false){
+    public function getRandomString($length=16,$upperonly=false){
         $string='';
         $min=1;
         $max=7;
@@ -809,9 +847,15 @@ class mamurModel {
 
     /**
      * Gets best value for user IP address
+     * returns "127.0.0.1" if no server variables are set
+     * which is probably the case ie if not running under
+     * a server (during testing)
      */
     public function GetUserIP(){
-        $userip=$_SERVER['REMOTE_ADDR'];
+    	$userip="127.0.0.1";  
+    	if(isset($_SERVER['REMOTE_ADDR'])){
+    		$userip=$_SERVER['REMOTE_ADDR'];
+    	}        
         if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])){
                  $userip= $_SERVER['HTTP_X_FORWARDED_FOR'];
         }elseif(isset($_SERVER['HTTP_CLIENT_IP'])){
@@ -904,8 +948,21 @@ class mamurModel {
      	 return $this->encrypt($this->session,53,19);
      }
     
-    
-
+     /**
+      * 
+      * Process the current Page meta data including the template to use
+      * 
+      */
+     public function processPageMetaData(){
+     	$this->readPageXML();
+     }
+     
+     
+     
+    /**
+     * 
+     * Reads page XML file which defines template and page meta data
+     */
     public function readPageXML(){
      //now process page Process url plugins which redirect page processing
       $xmlPagefile="{$this->getServerBase()}/pages{$this->pageDir}/{$this->pageName}_html/page.xml";
@@ -970,9 +1027,16 @@ class mamurModel {
 
     }
 
-    //the server base is usually the user directory but it could be mapped
-    //dynamically by a plugin for example admin pages - note database and
-    //logs are not affected and cannot be remapped
+    /**
+     * 
+     * the server base is usually the user directory but a call back
+     * function allows it to be switched programatically to another
+     * area. This would allow another file area to be used for the
+     * page and content area.
+     * Note the database and  logs are not affected and are not
+     * remapped
+     * 
+     */
     public function getServerBase(){
         $base=$this->mamurUserDir;
 
@@ -982,6 +1046,7 @@ class mamurModel {
         return $base;
     }
 
+    
     public function isError404Page(){
          $error404Page=false;
          if($this->pageName==$this->error404PageName){
@@ -1428,51 +1493,7 @@ class mamurModel {
         return $this->hostScheme.'://'.$_SERVER["HTTP_HOST"];
     }
 
-    /**
-     * 
-     * A nonce is a number used once and can be used to prevent forms
-     * from being resent. They also provide a security check see
-     * getNonce
-     * @param string $name - name of nonce
-     * @param integer $length - number of characters to use 16 if not given
-     */
-    public function setNonce($name='mamurData',$length=16){
-    	$data=$this->getDataObject($name);
-    	$nonce=$this->getRandomString($length);
-        $data->mamurNonce=$nonce;
-        $data->persist();
-        //this causes a new session cookie to be generated
-        $this->session['nonces'][$name]=$nonce;
-        return $nonce;
-    }
-
-    /**
-     * 
-     * A named Nonce value will be returned if it has been set.
-     * For security nonces are saved to server side session dataObject
-     * as well as in the encryted session cookie.
-     * If security fails the nonce will be set to false which may indicate
-     * a stolen session cookie and a security action such as logging is required.
-     * Use a nonce when it makes sense to protect access or use of
-     * a form which is related to an action in a browser tab window.
-     * The nonce value must still be compaired to the value used in the form
-     * but a mismatch indcates that the form may have been previously submitted
-     * @param string $name - name of nonce
-     * @return nonce - value of nonce, null if not known, false if security violation
-     */
-    public function getNonce($name='mamurData'){
-    	$ret=null;
-    	$nonce=$this->getDataObject($name)->mamurNonce;
-    	if(isset($this->session['nonces'][$name])){
-    		if($this->session['nonces'][$name]===$nonce){
-    			$ret=$nonce;
-    		}else{
-    			$ret=false;
-    		}
-    	}
-        return $ret;
-    }
-
+   
     
     public function getDataObject($name){
         if(!is_array($this->dataObjects)){

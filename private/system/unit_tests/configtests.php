@@ -16,6 +16,8 @@ require($system.'/modules/core/models/mamurConfig.php');
  * Unit tests to validate configuration classes
  * Assumes phpunit has been installed and autoloads
  * @author martinmarsh@sygenius.com
+ * @package mamur
+ * @subpackage test
  *
  */
 class coreConfigTests extends PHPUnit_Framework_TestCase{

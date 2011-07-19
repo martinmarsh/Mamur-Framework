@@ -29,7 +29,7 @@
  * or perform configuration related tasks.
  * Do not modify - core system class overwritten by updates
  * @package mamur
- * @subpackage config
+ * @subpackage coreModel
  */
 
 class mamurConfig{
