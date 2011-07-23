@@ -199,8 +199,8 @@ class mamurForm{
   			$formObject->formValid=true;
             $formObject->new=false;
             
-            $errorMessages=$formObject->getAttribute('errorMessages');
-            $checkBox= $formObject->getAttribute('checkBox');           
+            $errorMessages=$formObject->errorMessages;
+            $checkBox= $formObject->checkBox;           
             foreach($dataObject->getRecord() as $fieldName=>$fieldValue){
             	if(isset($this->request[$fieldName])){
                 	//Validate input   
@@ -289,7 +289,8 @@ class mamurForm{
 			print $this->errorFormStr['*error'];
         }
         
-        $formObject->setAttribute('errorMessages',$errorMessages);
+        $formObject->errorMessages=$errorMessages;
+        $formObject->checkBox=$checkBox;
       	$formObject->persist();
       	$dataObject->persist();
       }
@@ -299,8 +300,62 @@ class mamurForm{
       
       
       public function doInput($serparams){
-      	$param=unserialize($serparams);
-      	print "******* Input ********";
+      	$attr=unserialize($serparams);
+      	$lAttr=array();
+      	foreach($attr as $attrName=>$attrValue){
+      		$lAttr[strtolower($attrName)]=$attrValue;
+      	}
+      	$lTag="input";
+     	$str="<$lTag";
+     	$formObject=$this->model->getDataObject($this->formObjectName);
+     	$dataObject=$this->model->getDataObject($this->dataObjectName);
+     	$check=array();
+        $check[$attr['name']]['maxlength']=500;
+        $formObject->check=$check; 
+        
+        if(isset($lAttr['value']) ){
+        	$value=$lAttr['value'];
+        }else{
+             $value='';
+        }
+        
+        if(isset($lAttr['type']) ){
+        	$type=$lAttr['type'];
+        }else{
+             $type='input';
+        }
+                    
+        if($type=='checkbox'){
+            $checkBox= $formObject->checkBox;               
+        	if(!is_null($checkBox) && isset($checkBox[$attr['name']])){
+        	     $value=$checkBox[$lAttr['name']];    
+            }elseif(!isset($lAttr['value']) && isset($lAttr['checked']) ){
+                        	$value='1';	
+            }                
+        }
+       
+       
+        $str.=$this->fldAttrib($lAttr,$lTag); 
+        
+         
+        if($lAttr['type']=='checkbox' 
+        	&& isset($dataObject->$attr['name'])
+            && $dataObject->$attr['name']!==''
+        ){
+            $str.=' checked="checked"';
+        }
+        if($lAttr['type']=='radio' 
+             && isset($dataObject->$attr['name'])
+             && $dataObject->$attr['name']===$lAttr['value']
+        ){
+        	$str.=' checked="checked"';
+        }
+                    
+       	$str.=" />";
+        if(!empty($this->dataSet['errormessage'][$this->dataSetTable][$attr['name']])){
+                       $str.=$this->dataSet['errormessage'][$this->dataSetTable][$attr['name']];
+                    }
+                    print $str;
       }
       
       public function doTextarea($serparams){
@@ -366,48 +421,7 @@ class mamurForm{
          	$lAttr[strtolower($attrName)]=$value;
          }
          switch($lTag){
-             case 'form':
-                   /* print "Example tag test passed:
-                     {$attribute['name']} {$attribute['file']} {$attribute['attr1']}
-                     {$attribute['attr2']}";*/
-                    
-
-            case 'input':
-                    $str="<$lTag";
-                    $this->dataSet['check'][$this->dataSetTable][$attr['name']]['maxlength']=500;
-                    if($lAttr['type']=='checkbox'){
-                        if(isset($this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$attr['name']])){
-                       		$attr['value']=$this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$attr['name']];
-                    		$lAttr['value']=$attr['value'];
-                        }elseif(!isset($lAttr['value']) && isset($lAttr['checked']) ){
-                        	$attr['value']='1';
-                    	    $lAttr['value']='1';	
-                        }
-                    }
-                    if(!isset($lAttr['value']) ){
-                    	$attr['value']='';
-                    	$lAttr['value']='';
-                    }
-                    $str.=$this->fldAttrib($attr,$lTag);
-                    if($lAttr['type']=='checkbox' && 
-                        isset($this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$attr['name']]) &&
-                        $this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$attr['name']]!==''
-                    ){
-                        $str.=' checked="checked"';
-                    }
-                    if($lAttr['type']=='radio' && 
-                        isset($this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$attr['name']]) &&
-                        $this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$attr['name']]===$lAttr['value']
-                    ){
-                    	  $str.=' checked="checked"';
-                    }
-                    
-                    $str.=" />";
-                    if(!empty($this->dataSet['errormessage'][$this->dataSetTable][$attr['name']])){
-                       $str.=$this->dataSet['errormessage'][$this->dataSetTable][$attr['name']];
-                    }
-                    print $str;
-                    break;
+           
 
             case 'textarea':
                   $this->dataSet['check'][$this->dataSetTable][$attr['name']]['maxlength']=2000;
@@ -544,132 +558,137 @@ class mamurForm{
       }
 
 
-      protected function fldAttrib($attr,$lTag){
+	protected function fldAttrib($lAttr,$lTag){
+      	 $formObject=$this->model->getDataObject($this->formObjectName);
+         $check=$formObject->check;
+         $checkBox=$formObject->checkBox;   
+         $error=$formObject->error;
+         $dataObject=$this->model->getDataObject($this->dataObjectName);
+         
          $str=' ';
-         $lAttr=array();
-         foreach($attr as $attrName=>$value){
-         	$lAttr[strtolower($attrName)]=$value;
-         }
-         foreach($attr as $attrName=>$value){
-                       $lAttrName=strtolower($attrName);
-                       $lValue=strtolower($value);
-                       if(substr($attrName,0,1)=='*'){
-                           $rAttrName=substr($attrName,1); //name with '*' removed
-                           switch($lAttrName){
-                                case '*maxlength':
-                                case '*minlength':
-                                      $this->dataSet['check'][$this->dataSetTable][$lAttr['name']][$rAttrName]=$value;
-                                     break;
-                                 case '*errMin':
-                                 case '*errMax':
-                                 case '*error':
-                                 case '*errMessage':
-                                 case '*errorSent':
-                                 case '*errRequired':
-                                      $this->dataSet['error'][$this->dataSetTable][$lAttr['name']][$lAttrName]=
-                                            htmlspecialchars($value,ENT_NOQUOTES,'UTF-8',false);
-                                      break;
-                                 case '*verify':
-                                      $this->dataSet['check'][$this->dataSetTable][$lAttr['name']]['type']=$lValue;
-                                      break;
-                                 case '*required':
-                                 	  if($lValue!='n' && $lValue!='no' && $lValue!='false'){
-                                 	     $this->dataSet['check'][$this->dataSetTable][$lAttr['name']]['required']=1;
-                                      }
-                                 	  break;
-                                 case '*pattern':
-                                      $this->dataSet['check'][$this->dataSetTable][$lAttr['name']]['pattern']=$lValue;
-                                      break;
-
-                                default:
-
-                           }
-                       }else{
-                           $show=true;
-                           switch($lAttrName){
-                                case 'value':
-                                    if($lTag=='input'){
-                                        if(isset($lAttr['type']) && $lAttr['type']=='radio' && isset($lAttr['value'])){
-                                        	$value=$lAttr['value'];  //the value for radio buttons does not change
-                                        	//data set value must always be set so set it to null
-                                        	if(!isset($this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']])){	
-                                        		$this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']]=0;
-                                        	}
-                                            if(isset($this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']])
-                                               && $this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']]=== 0
-                                               && isset($lAttr['checked'])
-                                            ){	
-                                        		$this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']]=$lAttr['value'];
-                                        	}
-                                        }elseif(isset($this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']])){
-                                            $value=$this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']];
-                                            //if value is already in dataset but checkbox not defined then set it to dataset value
-                                            if(isset($lAttr['type']) && $lAttr['type']=='checkbox'){
-                                               if( !isset($this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']])){         	
-                                            		$this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']]=$value;        	
-                                               }else{
-                                               	  $value=$this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']];
-                                               }
-                                               
-                                            }
-                                         
-                                        }else{
-                                           $this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']]=$value;
-                                           //set checkbox value to any value given in form if dataSet empty
-                                           if(isset($lAttr['type']) && $lAttr['type']=='checkbox'){
-                                               if(!isset($this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']])){
-                                           	   		if($value==''){
-                                           	   	  		$value="1";
-                                           	   		}
-                                              		$this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']]=$value;
-                                               		if(!isset($lAttr['checked'])){
-                                            	 		$this->dataSet['table'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']]='';
-                                               		}
-                                           		}else{
-                                           			$value=$this->dataSet['checkbox'][$this->dataSetTable][$this->dataSetRow][$lAttr['name']];
-                                           		}
-                                           }
-                                        }
-                                       
-                                    }elseif($lTag=='option'){
-                                        $show=false; //value is never shown in option atrribute use *value
-                                    }
-                                    break;
-                               case 'checked':
-                               	        $show=false; //checked is always computed && overriden by a preset dataset field
-                                	    break;
-                               case 'minlength':
-                               case 'maxlength':
-                                     $this->dataSet['check'][$this->dataSetTable][$lAttr['name']][$lAttrName]=$value;
-                                     break;
-                               case 'required':
-                                     //required in html5 is required='required' or just present
-                                     $this->dataSet['check'][$this->dataSetTable][$lAttr['name']]['required']=1;
-                                     break;
-                               case 'type':
-                                      switch($lAttrName){
-                                            case 'email':
-                                            case 'tel':
-                                            case 'number':
-                                                $this->dataSet['check'][$this->dataSetTable][$lAttr['name']]['type']=$lAttrName;
-                                            break;
-                                        default:
-                                      }
-                                      break;
-                                case 'pattern':
-                                    $this->dataSet['check'][$this->dataSetTable][$lAttr['name']]['pattern']=$value;
-                                    break;
-                                default:
-
-                           }
-                           if($show)$str.=" $attrName=\"$value\"";
+         foreach($lAttr as $lAttrName=>$value){
+         	$lValue=strtolower($value);
+            if(substr($lAttrName,0,1)=='*'){
+            	$rAttrName=substr($lAttrName,1); //name with '*' removed
+                switch($lAttrName){
+                	case '*maxlength':
+                	case '*minlength':
+                     	$check[$rAttr['name']]=$value;
+                  		break;
+                    case '*errMin':
+              		case '*errMax':
+                    case '*error':
+                   	case '*errMessage':
+                    case '*errorSent':
+                   	case '*errRequired':
+                    	$error[$lAttr['name']][$lAttrName]=htmlspecialchars($value,ENT_NOQUOTES,'UTF-8',false);
+                        break;
+                    case '*verify':
+                        $error[$lAttr['name']]['type']=$lValue;
+                        break;
+                   	case '*required':
+                      	if($lValue!='n' && $lValue!='no' && $lValue!='false'){
+                        	$check[$lAttr['name']]['required']=1;
                        }
+                       break;
+                   	case '*pattern':
+                            $check[$lAttr['name']]['pattern']=$lValue;
+                       break;
+
+                   	default:
+
+                           }
+            }else{
+                 	$show=true;
+                    switch($lAttrName){
+                    case 'value':
+                    	if($lTag=='input'){
+                        	if(isset($lAttr['type']) && $lAttr['type']=='radio' && isset($lAttr['value'])){
+                            	$value=$lAttr['value'];  //the value for radio buttons does not change
+                                //data  value must always be set so set it to zero
+                                if(!isset($check[$lAttr['name']])){	
+                                       $dataObject->$lAttr['name']=0;
+                                }
+                                if(isset($dataObject->$lAttr['name'])
+                                               && $dataObject->$lAttr['name']=== 0
+                                               && isset($lAttr['checked'])
+                                ){	
+                                	$dataObject->$lAttr['name']=$lAttr['value'];
+                               	}
+                       		}elseif(isset($dataObject->$lAttr['name'])){
+                                $value=$dataObject->$lAttr['name'];
+                                //if value is already in dataObject but checkbox not defined then set it to dataObject value
+                                if(isset($lAttr['type']) && $lAttr['type']=='checkbox'){
+                                	if( !isset($checkBox[$lAttr['name']])){         	
+                                    	$checkBox[$lAttr['name']]=$value;        	
+                                    }else{
+                                        $value=$checkBox[$this->dataSetRow][$lAttr['name']];
+                                    }
+                                               
+                               }
+                                         
+                           	}else{
+                    			$dataObject->$lAttr['name']=$value;
+                              	//set checkbox value to any value given in form if dataSet empty
+                                if(isset($lAttr['type']) && $lAttr['type']=='checkbox'){
+                                	if(!isset($checkBox[$lAttr['name']])){
+                                    	if($value==''){
+                                        	$value="1";
+                                     	}
+                                       	$checkBox[$lAttr['name']]=$value;
+                                        if(!isset($lAttr['checked'])){
+                                       		$dataObject->$lAttr['name']='';
+                                        }
+                                 	}else{
+                                  		$value=$checkBox[$lAttr['name']];
+                                   	}
+                               	}
+                        	}
+                                       
+                        }elseif($lTag=='option'){
+                        	$show=false; //value is never shown in option atrribute use *value
+                       	}
+                        break;
+    				case 'checked':
+                    	$show=false; //checked is always computed && overriden by a preset dataset field
+                        break;
+                    case 'minlength':
+                    case 'maxlength':
+                    	$check[$lAttr['name']][$lAttrName]=$value;
+                    	break;
+                   	case 'required':
+                                     //required in html5 is required='required' or just present
+                    	$check[$lAttr['name']]['required']=1;
+                        break;
+                  	case 'type':
+                        switch($lAttrName){
+                        	case 'email':
+                            case 'tel':
+                            case 'number':
+                                $check[$lAttr['name']]['type']=$lAttrName;
+                            	break;
+                            default:
+                       	}
+                        break;
+                 	case 'pattern':
+                        $check[$lAttr['name']]['pattern']=$value;
+                        break;
+                   	default:
+
                     }
+             	if($show)$str.=" $lAttrName=\"$value\"";
+            }
+     	}
 
-           return $str;
-      }
+        $formObject->check=$check;
+        $formObject->checkBox=$checkBox;
+        $formObject->error=$error;          
+      	return $str;
+   	}
+      	
 
-      function validate($invalue,$name){
+      
+	function validate($invalue,$name){
          $valid=true;
 
          if(!empty($this->dataSet['check'][$this->dataSetTable][$name]['minlength'])){

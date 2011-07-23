@@ -167,19 +167,29 @@ class mamurModel {
 
 	/**
 	 * 
-	 * Sets up session and processes cookies as per configuration
+	 * Sets up session, retores a session by  processing cookies
+	 * as define by the configuration. By passing true as a parameter
+	 * the a new session will be generated and any dataObjects will be
+	 * destroyed
+	 * @param string $type   - type of variable eg user, nonce
 	 */
-	public function setUpSession(){
+	public function setUpSession($clear=false){
 		$config=mamurConfig::getInstance();
 		$set=$config->settings;
 		
 		$this->session=array();
 		$this->inSession=false;
+		$this->session['cookieUpdate']=false; //set to true to force update
 		
 		if(isset($_COOKIE['session'])){
-			$this->inSession=true;
-			$this->session=$this->decrypt($_COOKIE['session'],53,19);
-			$this->oldSession=$this->session;
+			if($clear){
+				unlink("{$this->mamurUserDir}/databases/mamur_datasets/{$this->session['id']}.txt");
+			}else{
+				$this->session=$this->decrypt($_COOKIE['session'],53,19);
+				$this->session['cookieUpdate']=false;
+				$this->inSession=true;
+				$this->oldSession=$this->session;
+			}  
 		}
     	
 		if($this->inSession && isset($this->session['timer']) && time()-$this->session['timer']>$set->sessionTimeOut){
@@ -199,6 +209,7 @@ class mamurModel {
 		
 		if(!isset($this->session['id'])){
 			$this->session['id']=$this->unique_serial().$this->getRandomString(8);
+			$this->session['valid']=true;
 		}
 		
 		$this->session['timer']=time();
@@ -254,7 +265,61 @@ class mamurModel {
        }
        $this->logOutFlag=false;
     }
+    
+    
+    /**
+     * Sets a typed session variable -
+     * There is limited storage space in the encyrpted session cookie 
+     * so it is better to use a dataObject to hold most session data 
+     * @param string $type   - type of variable eg user, nonce
+     * @param string $name   - name of variable 
+     * @param mixed $value  - value to set
+     */
+    public function setAsessionCookieVar($type,$name,$value){
+    	 $this->session[$type][$name]=$value;
+    }
 
+    /**
+     * 
+     * Gets a typed session variable 
+     * @param unknown_type $type  - type of variable eg user, nonce
+     * @param unknown_type $name - name of variable 
+     * @return mixed - value of varaible
+     */
+    public function getAsessionCookieVar($type,$name){
+    	 $ret=null;
+    	 if(isset($this->session[$type][$name])){
+    	 	$ret=$this->session[$type][$name];
+    	 }
+    	 return $ret;
+    }
+    
+   
+    /**
+     * 
+     * Returns true if a session has started. If sessions have not been
+     * confirmed then it is possible no sessions can be established
+     * this cannot be confirmed on the first access to the domain
+     * @return true or false depending if a valid cookie has been returned
+     */
+    public function inSession(){
+    	return $this->inSession;
+    }
+    
+    /**
+     * 
+     * Returns false if inSession() is true and there has been a stolen
+     * cookie detection on the session. For this to work forms using
+     * a nonce must be set using mamurForms or by calling set nonce on a
+	 * dataObject
+     */
+    public function isSessionValid(){
+    	return $this->session['valid'];
+    }
+    
+    
+   
+    
     /**
      * Saves php parameters defined by a php tag
      * @param $var
@@ -1509,10 +1574,34 @@ class mamurModel {
     public function readDataObjects(){
         $file="{$this->mamurUserDir}/databases/mamur_datasets/{$this->session['id']}.txt";       
         if(file_exists($file)){
+        	$nonceString="";
            	$this->dataObjects=unserialize(file_get_contents($file));
         	foreach($this->dataObjects['data'] as $name=> $dataObject){
         		$dataObject->setStatus('data','saved');
-           	}	
+        		$nonce=$dataObject->getAttribute('__nonce');
+        		if(!is_null($nonce)){
+        			$nonceString.=$nonce;
+        			$dataObject->setAttribute('__lastNonce',$nonce);
+        		}else{
+        			$dataObject->deleteAttribute('__lastNonce');
+        		}        		
+           	}
+            if($this->inSession){
+            	if( $this->session['nonces']!=md5($nonceString,true)){
+        			$this->session['valid']=false;
+        			//security violation delete session
+        			$this->setUpSession(true);
+        			$this->dataObjects=array();
+            	}
+            }	
+        }elseif(isset($this->session['nonces']) 
+        	   && $this->inSession
+        	   && !is_null($this->session['nonces'])
+       	){
+        	$this->session['valid']=false;
+        	//security violation delete session
+        	$this->setUpSession(true);
+        	$this->dataObjects=array();
         }
     }
     
@@ -1524,16 +1613,27 @@ class mamurModel {
            is_array($this->dataObjects['data']) &&
            count($this->dataObjects['data'])>0
         ) ){
+        	$this->session['nonces']=null;
+        	$nonceString="";
         	foreach($this->dataObjects['data'] as $name=> $dataObject){
            		if($dataObject->getStatus('save')=='persist'){
            	  	 	$saveObjects['data'][$name]=$dataObject;
            	  	    if($dataObject->getStatus('data')=='modified'){
            	  			$toSave=true;  //only save if at least one modified
            	  	    }
-           	  	 }	
-           	  }	
-           }
-     	if($toSave){ 
+           	  		$nonce=$dataObject->getAttribute('__nonce');
+           	  		if(!is_null($nonce)){
+           	  			$nonceString.=$nonce;
+           	  		}	    
+           	  	 }
+           	  	 
+           	}
+           	if($nonceString!=''){
+           		$this->session['nonces']= md5($nonceString,true);      	  			
+           	}	
+        }
+     	if($toSave){
+     		$this->session['cookieUpdate']=true;
         	$saveObjects['time']=time();
             $dir="{$this->mamurUserDir}/databases/mamur_datasets";
           

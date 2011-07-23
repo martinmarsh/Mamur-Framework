@@ -188,6 +188,16 @@ class mamurDataObject{
     	return $attr;
     }
     
+    public function deleteAttribute($name){
+    	$ret=false;
+    	$this->modified();
+    	if(isset($this->attributes[$name])){
+    		unset($this->attributes[$name]);
+    		$ret=true;
+    	}
+    	return $ret;
+    }
+    
     public function setStatus($name,$value){
     	$this->status[$name]=$value;
     	return $value;
@@ -218,45 +228,45 @@ class mamurDataObject{
     
      /**
      * 
-     * A nonce is a number used once and can be used to prevent forms
-     * from being resent. They also provide a security check.
+     * A nonce is a number used once and is saved in attribute '__nonce' 
+     * Setting a nonce will also persist the dataObject as a nonce
+     * can only work with on a persisted object
+     * They are used to prevent form from being resent and as
+     * a security check.
      * see getNonce for more details
      */
-    public function setNonce($prefix='n'){
+    public function setNonce(){
     	$nonce=md5(mt_rand().uniqid(true));
     	$this->setAttribute('__nonce',$nonce);
         $this->persist();
-        //this causes a new session cookie to be generated
-        $this->session['nonces'][$this]=$nonce;
         return $nonce;
     }
 
     /**
      * 
-     * A named Nonce value will be returned if it has been set.
-     * For security nonces are saved to server side session dataObject
-     * as well as in the encryted session cookie.
-     * If security fails the nonce will be set to false which may indicate
-     * a stolen session cookie and a security action such as logging is required.
-     * Set a nonce in a dataObject relating to form status to prevent reuse of
-     * a form and give some security against stolen session coookies.
-     * Also set one in a dataObject which might control access to a critical
-     * area of the web site.
-     * The nonce value must still be compaired to the value returned by the form
-     * and a mismatch indcates that the form may have been previously submitted
-     * @return nonce - value of nonce, null if not known, false if security violation
+     * This method gets the dataObject's Nonce value set on a previous request/page.
+     * It returns the same value as reading attribute '__lastnonce' which is set
+     * by the model on the next request/page. It does not read back a nonce just set with
+     * setNonce().  Normally setNonce() is called to set the nonce and return the value
+     * to be stored in a form. On sending the form the nonce is read using this
+     * getNonce method. If the form nonce is checked against this nonce and if it matches
+     * then this is the first time the form has been submitted.  If this method returns
+     * null if the nonce was not set.
+     * Note: the nonce is not automatically reset it must be set each time the form is
+     * produced. mamurForm automatically sets and uses a nonce on the dataObject.
+     * Security:
+     * The stolen cookie detection works by saving a hash of all nonces to the encrypted
+     * session cookie.  When any dataObject is read on a subsequent page the nonce hash is
+     * recomputed and compared with the session.
+     * A stolen cookie will not be detected if it is used before the genuine user in which
+     * case the theft will then be detected when the genuine user returns the form. The session
+     * will be destoyed and any user login status removed. If a coolie is used with a nonce hash
+     * but there are no dataObjects either the cookie has long expired or is stolen and once
+     * agin the session is destroyed.
+     * @return nonce - value of nonce, null if not known, false if potential security violation
      */
     public function getNonce(){
-    	$ret=null;
-    	$nonce=$this->setAttribute('__nonce');
-    	if(isset($this->session['nonces'][$this])){
-    		if($this->session['nonces'][$this]===$nonce){
-    			$ret=$nonce;
-    		}else{
-    			$ret=false;
-    		}
-    	}
-        return $ret;
+    	return $this->getAttribute('__lastNonce');
     }
     
     

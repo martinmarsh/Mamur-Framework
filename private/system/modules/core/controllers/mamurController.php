@@ -100,8 +100,8 @@ abstract class mamurController{
     		//any new session data
     	
     		if($set->allowSessionCookie=='yes' ){
-        		self::$model->setSessionCookie();
-        		self::$model->saveDataObjects();
+    			self::$model->saveDataObjects(); //must be done first
+        		self::$model->setSessionCookie();  		
     		}
     		//update the config file if required
     		$config->upDateConfig();
@@ -114,15 +114,23 @@ abstract class mamurController{
 
 	/**
 	 * Get controller gets the current controller dispatched by processUri
-	 * @return void
+	 * @return controller
 	 */
 	public static function getController(){
 		return  self::$controller;
 	}
 	
 	/**
+	 * Gets the mamur controller class instance
+	 * @return controller
+	 */
+	public static function getModel(){
+		return self::$model;
+	}
+	
+	/**
 	 * Get view gets the current view instance
-	 * @return void
+	 * @return view
 	 */
 	public static function getView(){
 		return  self::$view;
