@@ -67,7 +67,11 @@ abstract class mamurController{
 			}
 		}
 	
-		//@trigger_error("TRACE matched $controllerToUse");
+    	if($set->pageTrack=="yes" ){
+    		trigger_error("TRACE pageTrack: using Controller; $controllerToUse");
+    	}
+          
+		
          $contents=ob_get_contents ();
          if(!empty($contents)){
          	@trigger_error("Unexpected Output just before clearing buffer and running $controllerToUse controller");
@@ -145,6 +149,7 @@ abstract class mamurController{
 	
 	protected static function response($uri){
         $config=mamurConfig::getInstance(); 
+        $set=$config->settings;
     	//check to see if logout must be forced automatically can be cancelled
     	//by a plugin
     	self::$model->checkLogOut();
@@ -156,18 +161,30 @@ abstract class mamurController{
     	if(self::$model->pageProcessHookContinue()){
 
         	$fileExtension=self::$model->getPageExt();
-
+			$pageRequested=self::$model->getPageDir().'/'.self::$model->getPageName();  
+			 
         	if($fileExtension=='php'){
            		//php files bypass the templating engine
            		//include the php file within a view just like a [php /] tag
+        		if($set->pageTrack=="yes" ){
+    				trigger_error("Page Track: PHP extention in url - direct file request to mamurvView->directPhpView() : $pageRequested");
+    	     	}
            		self::$view->directPhpView();
 
         	}else{
-          	  //This is a STANDARD URL request       	  
-          	  $builtFile=$config->settings->build.self::$model->getPageDir().'/'.self::$model->getPageName().".php";
+          	  //This is a STANDARD URL request   
+          	  	  
+          	  $builtFile=$config->settings->build.$pageRequested.".php";
+
           	  if($config->settings->pageBuild=='yes' && file_exists($builtFile)){
+          	  	if($set->pageTrack=="yes" ){
+    				trigger_error("Page Track: STANDARD URL request for $pageRequested using prebuilt file at:".$builtFile);
+    	     	}
           	  	self::$view->showBuiltPage($builtFile);
           	  }else{
+          	  	if($set->pageTrack=="yes" ){
+    					trigger_error("Page Track: STANDARD URL request for $pageRequested ");
+    	     	}
 	        	   //obtain details about a pages meta data including which template to use
 	             self::$model->processPageMetaData();
 	               //We now instruct view to print via templating

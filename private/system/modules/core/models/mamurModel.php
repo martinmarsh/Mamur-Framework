@@ -76,7 +76,7 @@ class mamurModel {
     protected $mamurPluginDir,$mamurBaseDir,$mamurlogDir,$mamurSystemDir;
     protected $urlCallBack,$pageProcessCallBack,$pagePagePrintCallBack,$sessionClearCallBack,
               $serverBaseRequestCallBack;
-    protected $dataObjects,$session,$inSession,$oldSession,$logOutFlag,$tags,$options;
+    protected $dataObjects,$datObjectsDirty,$session,$inSession,$oldSession,$logOutFlag,$tags,$options;
 	
 
 
@@ -120,6 +120,7 @@ class mamurModel {
 		$this->sessionLogoutCallBack=array();
 		$this->serverBaseRequestCallBack=array();
 		$this->dataObjects=null;
+		$this->datObjectsDirty=false;
 		$this->tags=array();
 		$this->options=array();
 		$this->phpParameters=array();
@@ -182,10 +183,11 @@ class mamurModel {
 		$this->session['cookieUpdate']=false; //set to true to force update
 		
 		if(isset($_COOKIE['session'])){
-			if($clear){
+			$this->session=$this->decrypt($_COOKIE['session'],53,19);
+			if($clear && !empty($this->session['id'])){	
 				unlink("{$this->mamurUserDir}/databases/mamur_datasets/{$this->session['id']}.txt");
-			}else{
-				$this->session=$this->decrypt($_COOKIE['session'],53,19);
+			    unset($this->session['id']);
+			}else{	
 				$this->session['cookieUpdate']=false;
 				$this->inSession=true;
 				$this->oldSession=$this->session;
@@ -996,6 +998,8 @@ class mamurModel {
         }
         if($this->session!=$this->oldSession){
             $data=$this->getEncryptedSession();
+             //trigger_error("Setting cookie session data=".serialize($this->session));
+      
             setcookie("session", $data, 0,"/", $alldomains,FALSE,TRUE);
          
         }
@@ -1381,7 +1385,7 @@ class mamurModel {
         if(isset($global->$name)){
             return  $global->$name;
         }else{
-            trigger_error("trying to get an unknown Global $name");
+            @trigger_error("trying to get an unknown Global $name");
         }
     }
 
@@ -1586,12 +1590,17 @@ class mamurModel {
         			$dataObject->deleteAttribute('__lastNonce');
         		}        		
            	}
+           	$this->datObjectsDirty=false;
             if($this->inSession){
-            	if( $this->session['nonces']!=md5($nonceString,true)){
-        			$this->session['valid']=false;
-        			//security violation delete session
-        			$this->setUpSession(true);
-        			$this->dataObjects=array();
+            	if($nonceString!=''){
+           			$md5ReadNonces=md5($nonceString,true);     	  			
+            		if( $this->session['nonces']!=$md5ReadNonces){
+        				$this->session['valid']=false;
+        		   		trigger_error("Session Invalid due to nonces mismatch calculated oncestring='$nonceString' ie session nonces '".base64_encode ($this->session['nonces'])."' !=  nonces calculated from read dataobjects '".base64_encode ($md5ReadNonces)."' " );
+        				//security violation delete session
+        				$this->setUpSession(true);
+        				$this->dataObjects=array();
+            		}
             	}
             }	
         }elseif(isset($this->session['nonces']) 
@@ -1599,6 +1608,8 @@ class mamurModel {
         	   && !is_null($this->session['nonces'])
        	){
         	$this->session['valid']=false;
+        	  trigger_error("Session Invalid due to lost dataset file for id={$this->session['id']} where an expected nonces=".$this->session['nonces'] );
+        		
         	//security violation delete session
         	$this->setUpSession(true);
         	$this->dataObjects=array();
@@ -1612,7 +1623,8 @@ class mamurModel {
         if((is_array($this->dataObjects) &&
            is_array($this->dataObjects['data']) &&
            count($this->dataObjects['data'])>0
-        ) ){
+           )
+           ||$this->datObjectsDirty ){
         	$this->session['nonces']=null;
         	$nonceString="";
         	foreach($this->dataObjects['data'] as $name=> $dataObject){
@@ -1630,14 +1642,16 @@ class mamurModel {
            	}
            	if($nonceString!=''){
            		$this->session['nonces']= md5($nonceString,true);      	  			
+           	}
+           	if($this->datObjectsDirty){
+           		$toSave=true; 
            	}	
         }
      	if($toSave){
      		$this->session['cookieUpdate']=true;
         	$saveObjects['time']=time();
             $dir="{$this->mamurUserDir}/databases/mamur_datasets";
-          
-           	file_put_contents("{$dir}/{$this->session['id']}.txt",serialize($saveObjects));
+            file_put_contents("{$dir}/{$this->session['id']}.txt",serialize($saveObjects));
          	
            	$config=mamurConfig::getInstance();	
            	$configSet=$config->settings;
@@ -1687,7 +1701,12 @@ class mamurModel {
         if(!is_array($this->dataObjects)){
             $this->readDataObjects();
         }
+        
         if(isset($this->dataObjects['data'][$name])){
+          if($this->dataObjects['data'][$name]->getStatus('save')=='persist' ){
+          	$this->datObjectsDirty=true; 
+          }
+          //trigger_error("Unset dataobject $name=".$this->datObjectsDirty);	
           unset($this->dataObjects['data'][$name]);
           $ret=true;
         }

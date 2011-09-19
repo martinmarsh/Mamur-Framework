@@ -419,10 +419,17 @@ their error page instead -->
     }
 
     public function redirect($redirect=''){
-
-        if($this->model->getConfigValue('allowSessionCookie')=='yes' ){
+    	$set=mamurConfig::getInstance()->settings;
+    	$track=false;
+    	if($set->pageTrack=="yes" ){
+    		$track=true; //set to true to track redirects in debugging
+    	}
+        if($track)trigger_error("TRACE In mamurView Redirect - call with redirect=".$redirect);
+        
+        if($set->allowSessionCookie=='yes' ){
+           $this->model->saveDataObjects(); //must be done first
            $this->model->setSessionCookie();
-           $this->model->saveDataSets();
+           
         }
 
         $protcol="http";
@@ -432,6 +439,7 @@ their error page instead -->
         $host = $_SERVER['HTTP_HOST'];
 
         if(empty($redirect)){
+        	 if($track)trigger_error("PAGE TRACK REDIRECT: Header = Location: $protcol://$host/");
              header("Location: $protcol://$host/");
              exit();
         }
@@ -440,14 +448,17 @@ their error page instead -->
         $url=parse_url ($redirect);
         if(!empty($url['host'])){
             if(!empty($url['scheme'])){
-                header("Location: ".$redirect);
+				if($track)trigger_error("PAGE TRACK REDIRECT (fully qualified request): Header = Location: ".$redirect);
+            	header("Location: ".$redirect);
                 exit();
             }else{
               //assume http if another site otherwise same
                 if($host==$url['host']){
+                  if($track)trigger_error("PAGE TRACK REDIRECT (request matched host but protocol had to be added): Header = Location:  $protcol://$redirect");
                   header("Location:  $protcol://$redirect");
                   exit();
                 }else{
+                  if($track)trigger_error("PAGE REDIRECT (external request but protocol had to be assumed as http): Header = Location: http://$redirect");
                   header("Location: http://$redirect");
                   exit();
                 }
@@ -455,6 +466,7 @@ their error page instead -->
         }
         // host and scheme are empty
         if(substr($redirect,0,1)!=='/')$redirect="/".$redirect;
+        if($track)trigger_error("PAGE TRACK REDIRECT (host and scheme empty so set to web values): Header = Location: $protcol://$host$redirect");      
         header("Location: $protcol://$host$redirect");
         exit();
     }

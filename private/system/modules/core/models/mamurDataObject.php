@@ -262,7 +262,7 @@ class mamurDataObject{
      * case the theft will then be detected when the genuine user returns the form. The session
      * will be destoyed and any user login status removed. If a coolie is used with a nonce hash
      * but there are no dataObjects either the cookie has long expired or is stolen and once
-     * agin the session is destroyed.
+     * again the session is destroyed.
      * @return nonce - value of nonce, null if not known, false if potential security violation
      */
     public function getNonce(){

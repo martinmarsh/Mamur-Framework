@@ -1,6 +1,26 @@
  <?php
  /**
  * This file contains the core view Class - mamurForm
+ * 
+ * Forms are produced using mamur tags which mimic HTML tags ie are identical except
+ * for open and close of tags uses the mamur tag format. The exception being textarea which
+ * is contained in one tag with the contents being in the vlaue attribute. In addtion
+ * Attributes have also been added, principly those begining with a * character are
+ * used but never shown in the form html.
+ * 
+ * All Forms have a nonce number used once which is added as a hidden field and verified
+ * on receipt. Forms can only be submitted once and the number must match that stored in the
+ * session. This improves security since a failer casues a re-issue of the cookie under @author sygenius
+ * new encrytion.
+ * 
+ * Data used by the form is stored in a data object which is stored in the model and can be
+ * obtained thus:
+ * $dataObject=$this->model->getDataObject($this->dataObjectName);
+ * A form object contains the status and field information of the form and is contained in another
+ * data object specific to the form instance and can be obtained from the model:
+ * $formObject=$this->model->getDataObject($this->formObjectName);
+ * Mamur perists all models dataobjects if they are flagged for persistance and have been changed
+ * 
  *  Licence:
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,9 +50,9 @@
 class mamurForm{
 
       private $view,$dataOject,$dataObjectName,$formObjectName,$formName,$formId,
-       			$dataSetTable,$dataSetRow,$protection,
-      			$actionOverRide,$action,$cancel,$actionFunc,$cancelFunc,$request,$resubmit,
-      			$errorFormStr,$selectDataValue,$selectDataName,$inSelect;
+       		  $dataSetRow,$protection,
+      		  $actionOverRide,$action,$cancel,$actionFunc,$cancelFunc,$request,$resubmit,
+      		  $errorFormStr,$selectDataValue,$selectDataName,$inSelect;
 
       function __construct($setModel,$setView){
       	
@@ -42,7 +62,9 @@ class mamurForm{
 
          $this->dataObject=null;
          $this->dataObjectName='defaultForm';
-         $this->dataSetTable='default';
+         $this->formObjectName=null;
+         
+               
          $this->dataSetRow=0;
          
          $this->formName='';
@@ -59,22 +81,24 @@ class mamurForm{
          $this->selectDataName='';
          $this->inSelect=false;
          $this->resubmit='<h3 style="color:orange;" >Warning: This form has been submitted</h3>';
-         $this->errorFormStr['*error']='<h3 style="color:red;" >ERROR: Please correct and try again:</h3>';
-         $this->errorFormStr['*errMin']='<span style="color:red;">&lt;- too short</span>';
-         $this->errorFormStr['*errMax']='<span style="color:red;">&lt;- too long</span>';
-         $this->errorFormStr['*errRequired']='<span style="color:red;">&lt;- required</span>';
-         $this->errorFormStr['*errMessage']='<span style="color:red;">&lt;- invalid</span>';
-         $this->errorFormStr['*errorSent']='<h3 style="color:red;">NOTE: This form cannot be re-sent</h3>';
+         $this->errorFormStr['*error']='<h3 style="color:red;" >Form has errors: Please correct and try again</h3>';
+         $this->errorFormStr['*errormin']='<span style="color:red;">&lt;- too short</span>';
+         $this->errorFormStr['*errormax']='<span style="color:red;">&lt;- too long</span>';
+         $this->errorFormStr['*errorrequired']='<span style="color:red;">&lt;- required</span>';
+         $this->errorFormStr['*errormessage']='<span style="color:red;">&lt;- invalid</span>';
+         $this->errorFormStr['*errorsent']='<h3 style="color:red;">NOTE: This form cannot be re-sent</h3>';
 
       }
     
 
      /**
       * 
-      * Form placeholder inserts a php to invoke method
+      * Form placeholder - produces the open form html tag
+      * and set up the data and form objects
       * @param string $serparams - serialized parameter list
       */
      public function doForm($serparams){
+      
      	$attr=unserialize($serparams);
      	$lTag="form";
      	$str="<$lTag";
@@ -86,10 +110,7 @@ class mamurForm{
             		case '*data':
 						$this->dataObjectName=$value;
   						break;
-					case '*table':
-						$this->dataSetTable=$value;
-						break;
-                                     
+  					    
 					case '*rowid':
 						$this->dataSetRow=$value;
 						break;
@@ -102,11 +123,11 @@ class mamurForm{
               		case '*resubmit':
                    		$this->resubmit=$value;
                 		break;
-               		case '*errmin':
-             		case '*errmax':
+               		case '*errormin':
+             		case '*errormax':
                		case '*error':
-           			case '*errmessage':
-     				case '*errrequired':
+           			case '*errormessage':
+     				case '*errorrequired':
                    		$this->errorFormStr[$lAttrName]=htmlspecialchars($value,ENT_NOQUOTES,'UTF-8',false);
                 		break;
             		case '*onokfunction':
@@ -160,84 +181,84 @@ class mamurForm{
          $errorMessages=array();
          $checkBox=array();           
          $dataObject=$this->model->getDataObject($this->dataObjectName);
+         if(!empty($this->formId)){
+         		$this->formObjectName='form_'.$this->formId.'_'.$this->dataObjectName; 
+         }elseif(!empty($this->formName)){
+         	 	$this->formObjectName='form_'.$this->formName.'_'.$this->dataObjectName; 
+         }else{
+         		$this->formObjectName='form_'.$this->dataObjectName; 
+         }
               
-         //get dataObject if new (null formValid) then ignore any post as first time page
-         //has been prepared. If security mamurNonce is returned which matches the
-         //form then it is valid post (This is not a nonce check)
+         $formObject=$this->model->getDataObject($this->formObjectName);
          
-		if(is_null($dataObject->getAttribute('formObjectName'))){
-			$this->formObjectName=$this->model->getRandomString(8); 
-         	if(!empty($this->formId)){
-         		$this->formObjectName='form_'.$this->formId.'_'.$this->model->getRandomString(6); 
-         	}elseif(!empty($this->formName)){
-         	 	$this->formObjectName='form_'.$this->formName.'_'.$this->model->getRandomString(6); 
-         	}else{
-         		$this->formObjectName='form_'.$this->model->getRandomString(16); 
-         	}
-        	$formObject=$this->model->getDataObject($this->formObjectName);
-         	$dataObject->setAttribute('formObjectName',$this->formObjectName);
-
+		if(!isset($formObject->formValid)){
+			
          	$formObject->formValid=false;
             $formObject->action=$this->action;
             $formObject->override=$this->actionOverRide;
             $formObject->cancel=$this->cancel;
    			$formObject->new=true; 
             $formObject->errorMessages=array();
-            $formObject->check=array();
+            $formObject->fieldCheck=array();
             $formObject->checkBox=array();
             $formObject->hasExternalErrors=false;
                           
-			$str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
+			$str.=' action="'.$this->model->getPageDir().'/'.$this->model->getPageName().'.'.$this->model->getPageExt().'"';
 			
-		}elseif(isset($this->request['mamurNonce'])
+			  trigger_error("NEW FORM");
+		}else{
+           
+//var_dump ($formObject);
+            trigger_error("Form ret1 saved nonce=".$formObject->getNonce());
+			
+            if(isset($this->request['mamurNonce'])
                 && $this->request['mamurNonce']==$formObject->getNonce()
-        ){
-            //now validate form against input and set action or redirect
-            $this->formObjectName=$dataObject->getAttribute('formObjectName');
-            $formObject=$this->model->getDataObject($this->formObjectName);
+        	){
+            	//now validate form against input and set action or redirect
+            	
+            trigger_error("Form valid");
+  				$formObject->formValid=true;
+            	$formObject->new=false;
             
-  			$formObject->formValid=true;
-            $formObject->new=false;
-            
-            $errorMessages=$formObject->errorMessages;
-            $checkBox= $formObject->checkBox;           
-            foreach($dataObject->getRecord() as $fieldName=>$fieldValue){
-            	if(isset($this->request[$fieldName])){
-                	//Validate input   
-                	$newValue=$this->request[$fieldName];
-                    if(isset($checkBox[$fieldName])){
-                        if($checkBox[$fieldName]!=''){
-                           	$newValue=$checkBox[$fieldName];
-                        }else{
-                        	$newValue='1';	
-                        }		
-                    }
+            	$errorMessages=$formObject->errorMessages;
+            	$checkBox= $formObject->checkBox;           
+            	foreach($dataObject->getRecord() as $fieldName=>$fieldValue){
+            		if(isset($this->request[$fieldName])){
+                		//Validate input   
+                		$newValue=$this->request[$fieldName];
+                    	if(isset($checkBox[$fieldName])){
+                        	if($checkBox[$fieldName]!=''){
+                           		$newValue=$checkBox[$fieldName];
+                        	}else{
+                        		$newValue='1';	
+                        	}		
+                    	}
                                      
-                	$valid=$this->validate($newValue,$fieldName);
-          			$dataObject->$fieldName=trim(htmlspecialchars($newValue,ENT_NOQUOTES,'UTF-8',false));
-                    if($valid===true){           
-                    	$errorMessages=array();                   
-                    }else{
-                        $errorMessages=$valid;
-                        $formObject->formValid=false;
-                  	}
-                    if($formObject->formValid && $formObject->hasExternalErrors){
-                       	$formObject->formValid=false;
-                        $errorMessages=$formObject->getAttribute('errorExternalMessages');
-                        $formObject->hasExternalErrors=false;
-                        $formObject->setAttribute('errorExternalMessages',array());
-                    }
-   				}elseif(isset($dataObject->$fieldName)){
-   					//this nulls anything which is not returned!
+                		$valid=$this->validate($newValue,$fieldName);
+          				$dataObject->$fieldName=trim(htmlspecialchars($newValue,ENT_NOQUOTES,'UTF-8',false));
+                    	if($valid===true){           
+                    		$errorMessages[$fieldName]='';                   
+                    	}else{
+                        	$errorMessages[$fieldName]=$valid;
+                        	$formObject->formValid=false;
+                  		}
+                    	
+   					}elseif(isset($dataObject->$fieldName)){
+   						//this nulls anything which is not returned!
                          $dataObject->$fieldName='';                              				
-                }
+                	}
                              
-   			}//end for each field name
-   			
-           	//now process completed and valid form
-            if($formObject->formValid){
-            	//process special functions on form completion
-                if($this->actionFunction!='' ){
+   				}//end for each field name
+        	    if($formObject->formValid && $formObject->hasExternalErrors){
+                       		$formObject->formValid=false;
+                        	$errorMessages=$formObject->externalErrorMessages;
+                        	$formObject->hasExternalErrors=false;
+                        	$formObject->externalErrorMessages=array();
+                }
+           		//now process completed and valid form
+            	if($formObject->formValid){
+            		//process special functions on form completion
+                	if($this->actionFunction!='' ){
                                       $dir=dirname($this->actionFunction);
                                       if(empty($dir)|| $dir=='.' || $dir=='/' ){
                                          $dir=dirname(__FILE__);
@@ -248,47 +269,54 @@ class mamurForm{
                                       $file=basename($this->actionFunction);
 
                                       include_once($dir.'/'.$file);
-                 }
+                 	}
                                  //need to check status after processing
-                 if($formObject->formValid){
+                 	if($formObject->formValid){
                                     //in case of aceptance required
-                                    if( (isset($this->dataSet['override']) &&
-                                        $this->dataSet['override']=='noredirect')||
+                                    if( (isset($formObject->override) &&
+                                        $formObject->override=='noredirect')||
                                         $this->actionOverRide=='noredirect'){
-                                        $this->dataSet['overRidenAction']='noredirect';
+                                        $formObject->overRidenAction='noredirect';
 
                                     }else{
-                                    	$this->mamur->setDataSet($this->dataSetName,$this->dataSet);
- 
+                                    	//$this->mamur->setDataSet($this->dataSetName,$this->dataSet);
+                                        $this->model->deleteDataObject($this->formObjectName);
+                                        
                                         $str.=" action=\"{$this->action}\" ";
                                         $this->view->redirect($this->action);
                                     }
-                }
-           	}else{
-            	$str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
-            }
+                	}
+           		}else{
+            		//$str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
+            		$str.=' action="'.$this->model->getPageDir().'/'.$this->model->getPageName().'.'.$this->model->getPageExt().'"';
+	
+            	}
             
-        }else{
-        	$this->formObjectName=$dataObject->getAttribute('formObjectName');
-            $formObject=$this->model->getDataObject($this->formObjectName);
+        	}else{
+        		//$this->formObjectName=$dataObject->getAttribute('formObjectName');
+            	//$formObject=$this->model->getDataObject($this->formObjectName);
         	
-            if($formObject->formValid && !$formObject->new ){
-            	print $this->resubmit;
-            }
-           	$str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
+            	if($formObject->formValid && !$formObject->new ){
+            		print $this->resubmit;
+            	}
+           		//$str.=" action=\"{$_SERVER['REQUEST_URI']}\" ";
+           		$str.=' action="'.$this->model->getPageDir().'/'.$this->model->getPageName().'.'.$this->model->getPageExt().'"';
+		
+        	}
+        
         }
 
         $str.=" >";
         print $str;
 
         //set the dataset Nonce a security one time use id
-        $formObject->setNonce();
+   
          
-        print "\n<input type=\"hidden\" name=\"mamurNonce\" value=\"{$formObject->getNonce}\" />\n";
+        print "\n<input type=\"hidden\" name=\"mamurNonce\" value=\"{$formObject->setNonce()}\" />\n";
         if(!$formObject->formValid && !$formObject->new ){
 			print $this->errorFormStr['*error'];
         }
-        
+    print_r($errorMessages);    
         $formObject->errorMessages=$errorMessages;
         $formObject->checkBox=$checkBox;
       	$formObject->persist();
@@ -309,58 +337,92 @@ class mamurForm{
      	$str="<$lTag";
      	$formObject=$this->model->getDataObject($this->formObjectName);
      	$dataObject=$this->model->getDataObject($this->dataObjectName);
-     	$check=array();
-        $check[$attr['name']]['maxlength']=500;
-        $formObject->check=$check; 
+     	$check=$formObject->fieldCheck;
+        $check[$lAttr['name']]['maxlength']=500;
+        $formObject->fieldCheck=$check;
         
-        if(isset($lAttr['value']) ){
-        	$value=$lAttr['value'];
-        }else{
-             $value='';
-        }
-        
-        if(isset($lAttr['type']) ){
-        	$type=$lAttr['type'];
-        }else{
-             $type='input';
+        if(!isset($lAttr['type']) ){
+        	$lAttr['type']='input';
         }
                     
-        if($type=='checkbox'){
+        if($lAttr['type']=='checkbox'){
             $checkBox= $formObject->checkBox;               
-        	if(!is_null($checkBox) && isset($checkBox[$attr['name']])){
-        	     $value=$checkBox[$lAttr['name']];    
+        	if(!is_null($checkBox) && isset($checkBox[$lAttr['name']])){
+        	     $lAttr['value']=$checkBox[$lAttr['name']];    
             }elseif(!isset($lAttr['value']) && isset($lAttr['checked']) ){
-                        	$value='1';	
+                 $lAttr['value']='1';	
             }                
         }
-       
+        if(!isset($lAttr['value']) ){
+        	$lAttr['value']='';
+        }
        
         $str.=$this->fldAttrib($lAttr,$lTag); 
         
          
         if($lAttr['type']=='checkbox' 
-        	&& isset($dataObject->$attr['name'])
-            && $dataObject->$attr['name']!==''
+        	&& isset($dataObject->$lAttr['name'])
+            && $dataObject->$lAttr['name']!==''
         ){
             $str.=' checked="checked"';
-        }
-        if($lAttr['type']=='radio' 
-             && isset($dataObject->$attr['name'])
-             && $dataObject->$attr['name']===$lAttr['value']
+        }elseif($lAttr['type']=='radio' 
+             && isset($dataObject->$lAttr['name'])
+             && $dataObject->$lAttr['name']===$lAttr['value']
         ){
         	$str.=' checked="checked"';
         }
                     
        	$str.=" />";
-        if(!empty($this->dataSet['errormessage'][$this->dataSetTable][$attr['name']])){
+       	/*
+        if(!empty($dataObject->errormessage'][$this->dataSetTable][$attr['name']])){
                        $str.=$this->dataSet['errormessage'][$this->dataSetTable][$attr['name']];
                     }
-                    print $str;
+        */
+        if(!empty($formObject->errorMessages[$lAttr['name']])){
+        	$str.=$formObject->errorMessages[$lAttr['name']];
+        }
+        print $str;
       }
       
+      
+      
       public function doTextarea($serparams){
-      	$param=unserialize($serparams);
-      		print "******* Input ********";
+      	$attr=unserialize($serparams);
+      	$lAttr=array();
+      	foreach($attr as $attrName=>$attrValue){
+      		$lAttr[strtolower($attrName)]=$attrValue;
+      	}
+      	$lTag="textarea";
+     	$str="<$lTag";
+     	$formObject=$this->model->getDataObject($this->formObjectName);
+     	$dataObject=$this->model->getDataObject($this->dataObjectName);
+     	
+     	$check=$formObject->fieldCheck;
+        $check[$lAttr['name']]['maxlength']=2000;
+        $formObject->fieldCheck=$check;
+        
+        $value='';
+        if(isset($lAttr['value'])){
+        	$value=$lAttr['value'];
+        	//do not want to show value attribute ie should not have been set
+        	unset($lAttr['value']);
+        }
+        
+      	$str.=$this->fldAttrib($lAttr,$lTag);
+        $str.= " >";
+        //now add the value part of textarea between tags
+        if(isset($dataObject->$lAttr['name'])){
+             $value=$dataObject->$lAttr['name'];
+        }else{
+        	$dataObject->$lAttr['name']=$value;
+        }
+      	$str.= $value."</textarea>";
+      	
+        if(!empty($formObject->errorMessages[$lAttr['name']])){
+        	$str.=$formObject->errorMessages[$lAttr['name']];
+        }
+        print $str;
+                 
       }
       
 	  public function doSelect($serparams){
@@ -385,10 +447,16 @@ class mamurForm{
       
       public function doEndform($serparams){
       	$param=unserialize($serparams);
-      		print "******* End Form ********";
+      //	$this->mamur->setDataSet($this->dataSetName,$this->dataSet);
+        print '</form>';
+        $formObject=$this->model->getDataObject($this->formObjectName);
+        if($formObject->formValid && !$formObject->new ){
+        	print $this->errorFormStr['*error'];
+        }
+    //     var_dump ($formObject->fieldCheck);
       }
    
-    
+    	
     
       
       
@@ -560,11 +628,9 @@ class mamurForm{
 
 	protected function fldAttrib($lAttr,$lTag){
       	 $formObject=$this->model->getDataObject($this->formObjectName);
-         $check=$formObject->check;
          $checkBox=$formObject->checkBox;   
-         $error=$formObject->error;
          $dataObject=$this->model->getDataObject($this->dataObjectName);
-         
+         $check=$formObject->fieldCheck;
          $str=' ';
          foreach($lAttr as $lAttrName=>$value){
          	$lValue=strtolower($value);
@@ -573,29 +639,32 @@ class mamurForm{
                 switch($lAttrName){
                 	case '*maxlength':
                 	case '*minlength':
-                     	$check[$rAttr['name']]=$value;
-                  		break;
-                    case '*errMin':
-              		case '*errMax':
+                     		$check[$rAttr['name']][$lAttrName]=$value;
+                  			break;
+                    case '*errormin':
+              		case '*errormax':
                     case '*error':
-                   	case '*errMessage':
-                    case '*errorSent':
-                   	case '*errRequired':
-                    	$error[$lAttr['name']][$lAttrName]=htmlspecialchars($value,ENT_NOQUOTES,'UTF-8',false);
-                        break;
+                   	case '*errormessage':
+                    case '*errorsent':
+                   	case '*errorrequired':
+                    		$this->errorFormStr[$lAttr['name']][$lAttrName]=htmlspecialchars($value,ENT_NOQUOTES,'UTF-8',false);
+                       		 break;
                     case '*verify':
-                        $error[$lAttr['name']]['type']=$lValue;
-                        break;
+                        	$check[$lAttr['name']]['verify']=$lValue;
+                        	break;
                    	case '*required':
-                      	if($lValue!='n' && $lValue!='no' && $lValue!='false'){
-                        	$check[$lAttr['name']]['required']=1;
-                       }
-                       break;
+                      		if($lValue!='n' && $lValue!='no' && $lValue!='false'){
+                        		$check[$lAttr['name']]['required']=1;
+                       		}
+                       		break;
                    	case '*pattern':
-                            $check[$lAttr['name']]['pattern']=$lValue;
-                       break;
+                            $check[$lAttr['name']]['pattern']=$value;
+                       		break;
+					case '*value':
+						    $dataObject->$lAttr['name']=$value;
+					   		break;
 
-                   	default:
+					default:
 
                            }
             }else{
@@ -606,7 +675,7 @@ class mamurForm{
                         	if(isset($lAttr['type']) && $lAttr['type']=='radio' && isset($lAttr['value'])){
                             	$value=$lAttr['value'];  //the value for radio buttons does not change
                                 //data  value must always be set so set it to zero
-                                if(!isset($check[$lAttr['name']])){	
+                                if(!isset($checkBox[$lAttr['name']])){	
                                        $dataObject->$lAttr['name']=0;
                                 }
                                 if(isset($dataObject->$lAttr['name'])
@@ -622,7 +691,7 @@ class mamurForm{
                                 	if( !isset($checkBox[$lAttr['name']])){         	
                                     	$checkBox[$lAttr['name']]=$value;        	
                                     }else{
-                                        $value=$checkBox[$this->dataSetRow][$lAttr['name']];
+                                        $value=$checkBox[$lAttr['name']];
                                     }
                                                
                                }
@@ -648,6 +717,8 @@ class mamurForm{
                         }elseif($lTag=='option'){
                         	$show=false; //value is never shown in option atrribute use *value
                        	}
+                       	//otherwise value tag is shown
+                       	
                         break;
     				case 'checked':
                     	$show=false; //checked is always computed && overriden by a preset dataset field
@@ -665,7 +736,7 @@ class mamurForm{
                         	case 'email':
                             case 'tel':
                             case 'number':
-                                $check[$lAttr['name']]['type']=$lAttrName;
+                                $check[$lAttr['name']]['verify']=$lAttrName;
                             	break;
                             default:
                        	}
@@ -679,60 +750,68 @@ class mamurForm{
              	if($show)$str.=" $lAttrName=\"$value\"";
             }
      	}
-
-        $formObject->check=$check;
-        $formObject->checkBox=$checkBox;
-        $formObject->error=$error;          
+     	
+		$formObject->fieldCheck=$check;
+        $formObject->checkBox=$checkBox;          
       	return $str;
    	}
       	
 
       
-	function validate($invalue,$name){
+	protected function validate($invalue,$name){
          $valid=true;
+      
+         $formObject=$this->model->getDataObject($this->formObjectName);
+     	 $dataObject=$this->model->getDataObject($this->dataObjectName);
+     	 
+     	$check=$formObject->fieldCheck[$name];
+    //    print_r($check);
+        trigger_error("Validating  $name  =  '$invalue' check='".serialize($check)."'");
+         
 
-         if(!empty($this->dataSet['check'][$this->dataSetTable][$name]['minlength'])){
-           $minLength=$this->dataSet['check'][$this->dataSetTable][$name]['minlength'];
+         if(!empty($formObject->fieldCheck[$name]['minlength'])){
+           $minLength=$formObject->fieldCheck[$name]['minlength'];
          }else{
            $minLength=0;
          }
 
-         if(!empty($this->dataSet['check'][$this->dataSetTable][$name]['maxlength'])){
-           $maxLength=$this->dataSet['check'][$this->dataSetTable][$name]['maxlength'];
+         if(!empty($formObject->fieldCheck[$name]['maxlength'])){
+           $maxLength=$formObject->fieldCheck[$name]['maxlength'];
          }else{
            $maxLength=2000;
          }
          $errorMessage='';
-         if(isset($this->dataSet['error'][$this->dataSetTable][$name]['*errMessage'])){
-                $errorMessage=$this->dataSet['error'][$this->dataSetTable][$name]['*errMessage'];
+         //error strings may be set per field or per form
+         if(isset($formObject->errorMessages[$name]['*errormessage'])){
+                $errorMessage=$formObject->errorMessages[$name]['*errormessage'];
          }else{
-                $errorMessage=$this->errorFormStr['*errMessage'];
+                $errorMessage=$this->errorFormStr['*errormessage'];
          }
 
          $len=strlen($invalue);
-         if(!empty($this->dataSet['check'][$this->dataSetTable][$name]['required']) && $len==0  ){   	
-              if(isset($this->dataSet['error'][$this->dataSetTable][$name]['*errRequired'])){
-                  $valid=$this->dataSet['error'][$this->dataSetTable][$name]['*errRequired'];
+         if(!empty($formObject->fieldCheck[$name]['required']) && $len==0  ){   	
+              if(isset($formObject->errorMessages[$name]['*errorrequired'])){
+                  $valid=$formObject->errorMessages[$name]['*errorrequired'];
               }else{
-                  $valid=$this->errorFormStr['*errRequired'];
+                  $valid=$this->errorFormStr['*errorrequired'];
               }
          }elseif($len>$maxLength){
-              if(isset($this->dataSet['error'][$this->dataSetTable][$name]['*errMax'])){
-                  $valid=$this->dataSet['error'][$this->dataSetTable][$name]['*errMax'];
+              if(isset($this->errorFormStr[$name]['*errormax'])){
+                  $valid=$this->errorFormStr[$name]['*errormax'];
               }else{
-                 $valid=$this->errorFormStr['*errMax'];
+                 $valid=$this->errorFormStr['*errormax'];
               }
          }elseif($len<$minLength){
-               if(isset($this->dataSet['error'][$this->dataSetTable][$name]['*errMin'])){
-                  $valid=$this->dataSet['error'][$this->dataSetTable][$name]['*errMin'];
+               if(isset($this->errorFormStr[$name]['*errormin'])){
+                  $valid=$this->errorFormStr[$name]['*errormin'];
               }else{
-                 $valid=$this->errorFormStr['*errMin'];
+                 $valid=$this->errorFormStr['*errormin'];
               }
-         }elseif(!empty($this->dataSet['check'][$this->dataSetTable][$name]['type'])){
+         }elseif(!empty($formObject->fieldCheck[$name]['verify'])){
              $errorMess='';
-             $check=$this->dataSet['check'][$this->dataSetTable][$name]['type'];
-             if ($check!='' && $invalue!="") {
-                switch ($check){
+             $verify=$formObject->fieldCheck[$name]['verify'];
+             if ($verify!='' && $invalue!="") {
+                switch ($verify){
                     case "none":
                         break;
                     case "sameasnameornull":
@@ -805,8 +884,8 @@ class mamurForm{
                         $verifyreg['dollars']= '/^[$+\-]*[0-9]*[.]*[0-9]*(.){0,1}(.)*$/is';
                         $verifyreg['date']= '/^[A-Za-z0-9\/.\x20\-]*(.){0,1}(.)*$/is';
                         //if  case value is in the above regex array verify the input string
-                        if(isset($verifyreg[$check])){
-                             preg_match($verifyreg[$check],$invalue,$matches);
+                        if(isset($verifyreg[$verify])){
+                             preg_match($verifyreg[$verify],$invalue,$matches);
                              if (isset($matches[1])&& $matches[1]!=''){
                                     if(ord($matches[1])<=126){
                                        $errChar= htmlspecialchars($matches[1],ENT_NOQUOTES,'UTF-8',false);
@@ -816,12 +895,12 @@ class mamurForm{
                                     }
                             }
                        }else{
-                                $errorMess=$check.' ?';
+                                $errorMess=$verify.' ?';
                        }
                        if($errorMess==''){
-                            if($check=='date' && !strtotime($invalue)){
+                            if($verify=='date' && !strtotime($invalue)){
                                 $errorMess=true;
-                            }elseif($check=='number' && is_numeric($invalue)){
+                            }elseif($verify=='number' && is_numeric($invalue)){
                                 $errorMess=true;
                             }
                        }
@@ -832,13 +911,14 @@ class mamurForm{
             }elseif($errorMess!=''){
                  $valid=$errorMess;
             }
-       }elseif(!empty($this->dataSet['check'][$this->dataSetTable][$name]['pattern'])){
+       }elseif(!empty($formObject->fieldCheck[$name]['pattern'])){
              $errorMess='';
-             $pattern='/^'.$this->dataSet['check'][$this->dataSetTable][$name]['pattern'].'$/is';
+             $pattern='/^'.$formObject->fieldCheck[$name]['pattern'].'$/is';
              if (!preg_match($pattern,$invalue)){
                     $valid=$errorMessage."pattern='$pattern'";;
              }
        }
+         trigger_error("**result = $valid  ".serialize($valid));
          return $valid;
       }
       
