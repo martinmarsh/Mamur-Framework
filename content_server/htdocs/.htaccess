@@ -1,0 +1,50 @@
+#Comment in next line if required by host to assign php5 to .php
+#AddType x-mapp-php5 .php
+
+<IfModule mod_rewrite.c>
+RewriteEngine on
+RewriteBase /
+
+# *****************************************************************
+#   THIS FILE CONDITIONS THE URL TO CORRECT FORMAT AND
+#   maps all file requests which cannot be found to /index.php
+#   With this set up:
+#   A Files present in root directory structure will override any in Mamur
+#   Plain directory requests with no file will default to Mamur
+#   Comment in lines to ensure www in front of domain and faster zip compression
+#
+#*****************************************************************
+
+#rewriting www on front of all urls to ensure consistency of domain name
+#comment out next two lines if you do not wish to force www in front of domain name
+#RewriteCond %{HTTP_HOST} !^www [NC]
+#RewriteRule ^(.*)$ http://www.%{HTTP_HOST}/$1 [R=301,L]
+
+
+#checks to see if there is on the server a file with size or a sym link
+#if so runs rule to access that file otherwise runs mamur to process request
+RewriteCond %{REQUEST_FILENAME} -s [OR]
+RewriteCond %{REQUEST_FILENAME} -l
+RewriteRule ^.*$ - [NC,L]
+RewriteRule ^.*$ /mamur/start.php [NC,L]
+
+
+
+</IfModule>
+
+
+#If you do not already have compression set then comment in the
+#addOutput Filters by removing the hash symbol form each line
+#AddOutputFilterByType DEFLATE text/plain
+#AddOutputFilterByType DEFLATE text/html
+#AddOutputFilterByType DEFLATE text/xml
+#AddOutputFilterByType DEFLATE text/css
+#AddOutputFilterByType DEFLATE application/xml
+#AddOutputFilterByType DEFLATE application/xhtml+xml
+#AddOutputFilterByType DEFLATE application/rss+xml
+#AddOutputFilterByType DEFLATE application/javascript
+#AddOutputFilterByType DEFLATE application/x-javascript
+
+
+
+
