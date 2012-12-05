@@ -1,0 +1,173 @@
+install:
+
+1)Create composer.json file in the project root:
+
+{
+    "require": {
+        "behat/behat": "2.4.*@stable"
+    },
+    "minimum-stability": "dev",
+    "config": {
+        "bin-dir": "bin/"
+    }
+}
+
+2) Windows installation of composer has been installed so type:
+
+composer install  in directory containg the json file:
+
+C:\Program Files\behat>composer install
+Loading composer repositories with package information
+Installing dependencies
+  - Installing symfony/finder (2.1.x-dev v2.1.4)
+    Cloning v2.1.4
+
+  - Installing symfony/yaml (2.1.x-dev v2.1.4)
+    Cloning v2.1.4
+
+  - Installing symfony/translation (2.1.x-dev v2.1.4)
+    Cloning v2.1.4
+
+  - Installing symfony/event-dispatcher (2.1.x-dev v2.1.4)
+    Cloning v2.1.4
+
+  - Installing symfony/dependency-injection (2.1.x-dev v2.1.4)
+    Cloning v2.1.4
+
+  - Installing symfony/config (2.1.x-dev v2.1.4)
+    Cloning v2.1.4
+
+  - Installing symfony/console (2.1.x-dev v2.1.4)
+    Cloning v2.1.4
+
+  - Installing behat/gherkin (v2.2.5)
+
+  - Installing behat/behat (v2.4.4)
+
+symfony/event-dispatcher suggests installing symfony/http-kernel (2.1.*)
+behat/behat suggests installing behat/symfony2-extension (for integration with S
+ymfony2 web framework)
+behat/behat suggests installing behat/yii-extension (for integration with Yii we
+b framework)
+behat/behat suggests installing behat/mink-extension (for integration with Mink
+testing framework)
+Writing lock file
+
+
+
+3) Set path to behat bin
+
+4) C:\Program Files\behat>behat --init
++d features - place your *.feature files here
++d features\bootstrap - place bootstrap scripts and static files here
++f features\bootstrap\FeatureContext.php - place your feature related code here
+
+
+TO RUN:
+
+add a feture:
+
+eg  dir.feature
+
+# features/dir.feature
+Feature: dir
+  In order to see the directory structure
+  As a Windows user
+  I need to be able to list the current directory's contents
+
+
+Scenario: List 2 files in a directory
+  Given I am in a directory "test"
+  And I have a file named "foo"
+  And I have a file named "bar"
+  When I run "ls"
+  Then I should get:
+    """
+    bar
+    foo
+    """
+
+Each part of the scenario - the context, the event, and the outcome - can be extended by adding the And or But keyword:
+
+Scenario: Some description of the scenario
+  Given [some context]
+    And [more context]
+   When [some event]
+    And [second event occurs]
+   Then [outcome]
+    And [another outcome]
+    But [another outcome]
+
+There’s no actual difference between, Then, And But or any of the other words that start each line. These keywords are all made available so that your scenarios are natural and readable.
+
+
+
+Executing Behat
+
+You’ve now defined the feature and one scenario for that feature. You’re ready to see Behat in action! Try executing Behat from inside your ls_project directory:
+
+$ behat
+
+note note in fetures directory!
+
+C:\Program Files\behat>behat
+Feature: dir
+  In order to see the directory structure
+  As a Windows user
+  I need to be able to list the current directory's contents
+
+  Scenario: List 2 files in a directory # features\dir.feature:8
+    Given I am in a directory "test"
+    And I have a file named "foo"
+    And I have a file named "bar"
+    When I run "ls"
+    Then I should get:
+      """
+      bar
+      foo
+      """
+
+1 scenario (1 undefined)
+5 steps (5 undefined)
+0m0.207s
+
+You can implement step definitions for undefined steps with these snippets:
+
+    /**
+     * @Given /^I am in a directory "([^"]*)"$/
+     */
+    public function iAmInADirectory($arg1)
+    {
+        throw new PendingException();
+    }
+
+    /**
+     * @Given /^I have a file named "([^"]*)"$/
+     */
+    public function iHaveAFileNamed($arg1)
+    {
+        throw new PendingException();
+    }
+
+    /**
+     * @When /^I run "([^"]*)"$/
+     */
+    public function iRun($arg1)
+    {
+        throw new PendingException();
+    }
+
+    /**
+     * @Then /^I should get:$/
+     */
+    public function iShouldGet(PyStringNode $string)
+    {
+        throw new PendingException();
+    }
+
+
+
+
+
+
+
