@@ -2,7 +2,7 @@
 namespace mamur\services\controller;
 
 
-class content extends abstractController{
+class item extends abstractController{
     
      
     

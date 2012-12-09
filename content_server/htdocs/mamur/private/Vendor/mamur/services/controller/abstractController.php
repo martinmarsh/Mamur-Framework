@@ -23,7 +23,6 @@ abstract class abstractController
      */
     public function preDispatch()
     {   
-        
         $config=\mamur\config::get();
         $fileRefList=$config->uriList;
         $expectUri=array();

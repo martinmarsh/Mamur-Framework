@@ -25,6 +25,9 @@ class FeatureContext extends BehatContext
     protected $result;
     protected $resultInfo;
     protected $postFields;
+    protected $item;
+    protected $currentItem;
+
     
     /**
      * Initializes context.
@@ -38,16 +41,30 @@ class FeatureContext extends BehatContext
         $this->postFields= array();
         $this->result = NULL;
         $this->resultInfo = NULL;
+       
     }
 
-   
+ 
+  
     /**
-     * @Given /^I have an item "([^"]*)"$/
+     * @Given /^I have a test content "([^"]*)" I will refer to as "([^"]*)"  and which contains$/
      */
-    public function iHaveAnItem($item)
+    public function iHaveATestContentIWillReferToAsAndWhichContains($item, $name, PyStringNode $content)
     {
-        $this->uri=$item;
         
+        $this->item[$name]['address'][$item];
+        $this->item[$name]['content'][$content];
+        $this->currentItem=$name;
+    }
+
+
+    /**
+     * @Given /^I have item "([^"]*)"$/
+     */
+    public function iHaveItem($name)
+    {
+        $this->uri=$this->item[$name]['address'];
+        $this->currentItem=$name;
     }
 
     /**
@@ -69,7 +86,7 @@ class FeatureContext extends BehatContext
         //
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, "http://www.ardington.mamur/" );
+        curl_setopt($ch, CURLOPT_URL, "http://www.mamur2.local/" );
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
         curl_setopt($ch, CURLOPT_TIMEOUT, '3');
         curl_setopt($ch, CURLINFO_HEADER_OUT, 1);
@@ -118,27 +135,27 @@ class FeatureContext extends BehatContext
     }
 
 
-    
+   
+
     /**
-     * @Then /^I should get response code "([^"]*)" and content:$/
+     * @Then /^I should get response codes "([^"]*)"$/
      */
-    public function iShouldGetResponseCodeAndContent($response, PyStringNode $string)
+    public function iShouldGetResponseCodes($response)
     {
-        $error="";
-        if($response!=$this->resultInfo['http_code']){
-            $error="Got response code {$this->resultInfo['http_code']} when $response was expected";
+        $codes=explode(",",trim($response));
+        if(!in_array($this->resultInfo['http_code'],$codes)){
+            throw new ErrorException("**FAILED** Got response code {$this->resultInfo['http_code']} when code in $response was expected");
         }
-    
-        if($string != $this->result){
-            if($error!=''){
-                $error.=" also ";
-            }
-            $error.="The expected content was not recieved";
+    }
+
+    /**
+     * @Given /^I should get my test content$/
+     */
+    public function iShouldGetMyTestContent()
+    {
+        if($this->item[$this->currentItem]['content'] != $this->result){ 
+            throw new ErrorException("**FAILED** The expected content was not recieved: $this->result");
             
-        }
-        
-        if($error){
-            throw new Exception($error);
         }
     }
 
