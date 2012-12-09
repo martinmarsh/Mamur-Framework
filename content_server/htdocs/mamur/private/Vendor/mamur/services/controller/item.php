@@ -1,10 +1,16 @@
 <?php
 namespace mamur\services\controller;
-
+use mamur\database\models as db;
+use mamur\services\model as model;
 
 class item extends abstractController{
     
-     
+    protected $item; 
+    
+    function __constuct(){
+        //inject database dependncy into item model
+        $this->item = new model\item(db\connection::get('contentDb'));
+    }
     
     /* The post action expects the body to contain
      * the contents in xml. Without headers serivice must be first
@@ -29,6 +35,7 @@ class item extends abstractController{
      */
     public function get(){
         print "in get";
+        $item = new item(db\connection::get('contentDb'));
     }
     
     /* The delete action removes the contents at fileref

@@ -13,6 +13,7 @@ class auth extends abstractController{
       $db=db\connection::get('contentDb');
       $db->prepare("select * from item", array(\PDO::ATTR_CURSOR, \PDO::CURSOR_FWDONLY));
       
+   
        print "in web<br>";
       // print "{$_SERVER['HTTP_X_MAMUR_AUTH_KEY']}<br />";
       // print "{$_SERVER['HTTP_X_MAMUR_API_ID']}<br />";

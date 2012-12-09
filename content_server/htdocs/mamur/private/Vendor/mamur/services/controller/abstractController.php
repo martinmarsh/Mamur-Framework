@@ -18,8 +18,14 @@ abstract class abstractController
         $this->methods=array('get','post','put','delete','head');
     }
     
-    /* dispatch receives the _api1 request 
-     * and invokes the required interface
+    /* pre-dispatch receives the all api service 
+     * contoller requets which should extend from
+     * this class.
+     * The headers and uri Api parameters are processed
+     * so that headers take presidence. Any Auth keys
+     * are validated and authoristaion noted.
+     * Then distpatch is called which uses the discoverred method.
+     * On return from the method postDispatch is called.
      */
     public function preDispatch()
     {   
@@ -58,7 +64,7 @@ abstract class abstractController
                 $varDef=array_shift($fileRefList);
                 $varDef=substr($varDef,2);
                 $val=array_shift($fileRefList);
-                print"<br>found $varDef = $val";
+                //print"<br>found $varDef = $val";
                 foreach($expectUri as $var=>$name){
                     if($name==$varDef){
                         $this->$var=$val;
@@ -67,7 +73,7 @@ abstract class abstractController
                 }
                 
             }else{
-                print "<BR>no match=".$fileRefList[0];
+                throw new \Exception("URI has an unknown Api request parameter: ".$fileRefList[0]);
                 break;
             }
             $i+=2;
@@ -78,26 +84,37 @@ abstract class abstractController
         $this->autheticated=FALSE;
         $this->fileRef=implode('/',$fileRefList);
         $this->dispatch();
+        $this->postDispatch();
+        
     }
     
+    
+    /*
+     * Simply goes to the method detected
+     * by pre-dispatch. May be overriden
+     */
     protected function dispatch()
     {
        if(!empty($this->method)){
            $action=$this->method;
            $this->$action(); 
-           $this->postDispatch();
+           return;
        } else {
-           tigger_error("no method found in abstract dispatch",E_USER_ERROR);
+           throw new \Exception("no method found in abstract dispatch");
        }
     }
     
     
     
-    
+    /*
+     * Override to implement postDispatch
+     * processing in a controller
+     */
     
     protected function postDispatch()
     {
         
         
     }
+    
 }
