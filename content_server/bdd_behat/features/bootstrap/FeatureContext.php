@@ -20,6 +20,7 @@ use Behat\Gherkin\Node\PyStringNode,
 class FeatureContext extends BehatContext
 {
     
+    protected $server;
     protected $uri;
     protected $headers;
     protected $result;
@@ -45,16 +46,25 @@ class FeatureContext extends BehatContext
     }
 
  
+    /**
+     * @Given /^I have a server at "([^"]*)"$/
+     */
+    public function iHaveAServerAt($server)
+    {
+        $this->server=$server;
+    }
+
   
     /**
      * @Given /^I have a test content "([^"]*)" I will refer to as "([^"]*)"  and which contains$/
      */
-    public function iHaveATestContentIWillReferToAsAndWhichContains($item, $name, PyStringNode $content)
+    public function iHaveATestContentIWillReferToAsAndWhichContains($address, $name, PyStringNode $content)
     {
-        
-        $this->item[$name]['address'][$item];
-        $this->item[$name]['content'][$content];
+        $this->item=array();
+        $this->item[$name]['address']=$address;
+        $this->item[$name]['content']=$content;
         $this->currentItem=$name;
+     
     }
 
 
@@ -65,6 +75,7 @@ class FeatureContext extends BehatContext
     {
         $this->uri=$this->item[$name]['address'];
         $this->currentItem=$name;
+     
     }
 
     /**
@@ -86,9 +97,9 @@ class FeatureContext extends BehatContext
         //
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, "http://www.mamur2.local/" );
+        curl_setopt($ch, CURLOPT_URL, $this->server.$this->uri );
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
-        curl_setopt($ch, CURLOPT_TIMEOUT, '3');
+        curl_setopt($ch, CURLOPT_TIMEOUT, '10');
         curl_setopt($ch, CURLINFO_HEADER_OUT, 1);
         if($requestType=="GET"){
         }elseif($requestType=="POST"){
@@ -112,14 +123,14 @@ class FeatureContext extends BehatContext
         curl_setopt($ch, CURLOPT_HTTPHEADER,$headers); 
 
         $this->result=curl_exec ($ch);
-        if(!$this->result){
-           throw new Exception("No Server response in iMakeARequest using $requestType -- you may wantt to check the test paramters");   
+        if($this->result===FALSE){
+          
+           throw new ErrorException("No Server response in iMakeARequest using $requestType -- you may want to check the test paramters");   
         }
         $this->resultInfo = curl_getinfo($ch);
        
         curl_close($ch);
-       // print "result=";
-       // print_r($this->result);
+      
       //  print "resultInfo=";
       //  print_r($this->resultInfo);
         
@@ -144,7 +155,7 @@ class FeatureContext extends BehatContext
     {
         $codes=explode(",",trim($response));
         if(!in_array($this->resultInfo['http_code'],$codes)){
-            throw new ErrorException("**FAILED** Got response code {$this->resultInfo['http_code']} when code in $response was expected");
+            throw new ErrorException("**FAILED** Got response code ".$this->resultInfo['http_code']." when code in $response was expected");
         }
     }
 
@@ -153,9 +164,14 @@ class FeatureContext extends BehatContext
      */
     public function iShouldGetMyTestContent()
     {
+        //print "\n\nitem===";
+        //print_r($this->item);
+        //print "\nresult=".$this->result."<-\n";
+       // print "\nexpected for ".$this->currentItem." is ".$this->item[$this->currentItem]['content']."<-";
+        
         if($this->item[$this->currentItem]['content'] != $this->result){ 
-            throw new ErrorException("**FAILED** The expected content was not recieved: $this->result");
-            
+            throw new ErrorException("**FAILED** The expected content from {$this->uri} was not recieved: $this->result");
+           
         }
     }
 
