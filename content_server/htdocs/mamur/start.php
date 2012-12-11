@@ -155,10 +155,9 @@ if ($config->allowDebug && strtolower($config->debug)==true){
 //You can also use this function to add aditional autoloaders
 spl_autoload_register('\mamur\autoClassLoad',false);
 
-
-
 if (!empty($_SERVER['HTTP_X_MAMUR_SERVICE'])){
-    $controller='\\mamur\\services\\controller\\'.$_SERVER['HTTP_X_MAMUR_SERVICE'];
+
+    $controller='\\mamur\\services\\controller\\'.trim($_SERVER['HTTP_X_MAMUR_SERVICE']);
     $dispatch=new $controller();
 } elseif($config->getRequestItem(0) =='__service' ){
     $controller='\\mamur\\services\\controller\\'.$config->getRequestItem(1);

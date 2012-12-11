@@ -34,8 +34,9 @@ class item extends abstractController{
      * the xml contents. 
      */
     public function get(){
-        print "in get";
-        $item = new item(db\connection::get('contentDb'));
+        print "in item get";
+        print_r($_SERVER);
+       // $item = new item(db\connection::get('contentDb'));
     }
     
     /* The delete action removes the contents at fileref

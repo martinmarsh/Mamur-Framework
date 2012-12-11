@@ -28,6 +28,9 @@ class FeatureContext extends BehatContext
     protected $postFields;
     protected $item;
     protected $currentItem;
+    protected $apiID;
+    protected $apiSecret;
+    protected $apiKey;
 
     
     /**
@@ -38,7 +41,7 @@ class FeatureContext extends BehatContext
      */
     public function __construct(array $parameters)
     {
-        $this->headers=array('Content-Type' => 'text/plain');
+       // $this->headers=array('Content-Type' => 'text/plain');
         $this->postFields= array();
         $this->result = NULL;
         $this->resultInfo = NULL;
@@ -67,6 +70,36 @@ class FeatureContext extends BehatContext
      
     }
 
+    
+    /**
+     * @Given /^my api id is "([^"]*)"$/
+     */
+    public function myApiIdIs($id)
+    {
+        $this->apiID=$id;
+    }
+
+    /**
+     * @Given /^my api secret is "([^"]*)"$/
+     */
+    public function myApiSecretIs($secret)
+    {
+        $this->apiSecret=$secret;
+    }
+
+    /**
+     * @Given /^I set api id and api key in HTTP header$/
+     */
+    public function iSetApiIdAndApiKeyInHttpHeader()
+    {
+        $this->headers['X_MAMUR_API_ID']=$this->apiID;
+        //$this->headers['X_MAMUR_AUTH_KEY']=$this->apiKey;
+        $this->headers['X_MAMUR_API_SECRET']=$this->apiSecret;
+        $this->headers['X_MAMUR_AUTH_KEY']=$this->apiSecret;
+   
+    }
+
+
 
     /**
      * @Given /^I have item "([^"]*)"$/
@@ -78,15 +111,16 @@ class FeatureContext extends BehatContext
      
     }
 
+   
     /**
-     * @Given /^I set header "([^"]*)" to "([^"]*)"$/
+     * @Given /^I set HTTP header "([^"]*)" to "([^"]*)"$/
      */
-    public function iSetHeaderTo($header, $value)
+    public function iSetHttpHeaderTo($header, $value)
     {
         $this->headers[$header]=$value;
-        //throw new PendingException();
     }
 
+    
     
     /**
      * @When /^I make a "([^"]*)" request$/
@@ -119,7 +153,7 @@ class FeatureContext extends BehatContext
         $headers=array();
         foreach($this->headers as $header=>$value){
            $headers[]=$header.":".$value; 
-        }
+        }                                   
         curl_setopt($ch, CURLOPT_HTTPHEADER,$headers); 
 
         $this->result=curl_exec ($ch);
@@ -131,9 +165,9 @@ class FeatureContext extends BehatContext
        
         curl_close($ch);
       
-      //  print "resultInfo=";
-      //  print_r($this->resultInfo);
-        
+     // print "\nresultInfo=";
+     // print_r($this->resultInfo);
+      // print "\n__\n"; 
         //throw new PendingException();
     }
 
@@ -170,7 +204,7 @@ class FeatureContext extends BehatContext
        // print "\nexpected for ".$this->currentItem." is ".$this->item[$this->currentItem]['content']."<-";
         
         if($this->item[$this->currentItem]['content'] != $this->result){ 
-            throw new ErrorException("**FAILED** The expected content from {$this->uri} was not recieved: $this->result");
+            throw new ErrorException("**FAILED** The expected content was not recieved.\nContent returned:\n$this->result\nReturned form Url: {$this->uri}\n");
            
         }
     }

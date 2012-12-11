@@ -41,9 +41,10 @@ abstract class abstractController
             $expectUri['method'] = 'method';
         }
         $expectHeaders=array(
-            'authKey'=>'HTTP_X_MAMUR_AUTH_KEY',
-            'apiId'  =>'HTTP_X_MAMUR_API_ID',
-            'service'=>'HTTP_X_MAMUR_SERVICE'
+            'authKey'   =>'HTTP_X_MAMUR_AUTH_KEY',
+            'apiId'     =>'HTTP_X_MAMUR_API_ID',
+            'apiSecret' =>'HTTP_X_MAMUR_API_SECRET',
+            'service'   =>'HTTP_X_MAMUR_SERVICE'
         );
 
        
@@ -59,7 +60,7 @@ abstract class abstractController
    
         $required=count($expectUri)*2;
         $i=0;
-        while(isset($fileRefList[0 ])&& $i< $required ){
+        while(!empty($fileRefList[0 ]) && $i< $required ){
             if(substr_compare($fileRefList[0], '__', 0,2)===0){
                 $varDef=array_shift($fileRefList);
                 $varDef=substr($varDef,2);
@@ -73,7 +74,7 @@ abstract class abstractController
                 }
                 
             }else{
-                throw new \Exception("URI has an unknown Api request parameter: ".$fileRefList[0]);
+                //first none special parameter breaks search
                 break;
             }
             $i+=2;
