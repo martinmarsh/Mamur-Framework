@@ -22,6 +22,7 @@ abstract class abstractPdo
             
     function __construct($db){ 
         $this->db=$db;
+        print "db posted";
     }
 
 

@@ -7,18 +7,22 @@ class item extends abstractController{
     
     protected $item; 
     
-    function __constuct(){
+    function __construct(){
+        //implement parent construct
+        parent::__construct();
         //inject database dependncy into item model
         $this->item = new model\item(db\connection::get('contentDb'));
     }
     
-    /* The post action expects the body to contain
-     * the contents in xml. Without headers serivice must be first
-     * eg /__service/content/__action/get/__authKey/key/file_reference
+    /* The post action expects the body to contain post variables
+     * content = content
+     * other variables = metadata`
      * 
      */
     public function post(){
-        print "in post";
+        //may be need to verify post content
+        $this->item->save($this->fileRef,$_POST['content']);
+        
     }
     
      
@@ -35,7 +39,7 @@ class item extends abstractController{
      */
     public function get(){
         print "in item get";
-        print_r($_SERVER);
+       // print_r($_SERVER);
        // $item = new item(db\connection::get('contentDb'));
     }
     

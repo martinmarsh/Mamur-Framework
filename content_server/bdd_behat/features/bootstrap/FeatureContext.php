@@ -120,7 +120,15 @@ class FeatureContext extends BehatContext
         $this->headers[$header]=$value;
     }
 
-    
+   
+    /**
+     * @Given /^I set POST content data$/
+     */
+    public function iSetPostContentData()
+    {
+        $this->postFields['content']=$this->item[$this->currentItem]['content'];
+    }
+
     
     /**
      * @When /^I make a "([^"]*)" request$/
@@ -137,9 +145,8 @@ class FeatureContext extends BehatContext
         curl_setopt($ch, CURLINFO_HEADER_OUT, 1);
         if($requestType=="GET"){
         }elseif($requestType=="POST"){
-            $fields=array();
             curl_setopt($ch, CURLOPT_POST,           1 );
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $fields); 
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $this->postFields); 
         }elseif($requestType=="PUT"){
             curl_setopt($ch, CURLOPT_PUT, true);
             curl_setopt($ch,CURLOPT_INFILE,"");

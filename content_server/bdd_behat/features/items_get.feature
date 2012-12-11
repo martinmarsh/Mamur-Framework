@@ -15,12 +15,21 @@ Feature: items_get
 <p>Or any other format I choose</p> 
         """ 
 
+Scenario: Before I can get content I have to post some
+  Given I have item "content1"
+    And I set HTTP header "X_MAMUR_SERVICE" to "item"
+    And I set api id and api key in HTTP header
+    And I set POST content data
+   When I make a "POST" request
+  Then I should get response codes "200,201,202,302,304"
+    And I should get my test content
 
+ 
 Scenario: Get test item's content using only headers
   Given I have item "content1"
     And I set HTTP header "X_MAMUR_SERVICE" to "item"
     And I set api id and api key in HTTP header
-   When I make a "GET" request
+  When I make a "GET" request
   Then I should get response codes "200,201,202,302,304"
     And I should get my test content
  
