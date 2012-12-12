@@ -14,6 +14,14 @@ use Behat\Gherkin\Node\PyStringNode,
 //   require_once 'PHPUnit/Framework/Assert/Functions.php';
 //
 
+class failedException extends Exception
+{
+    function __construct($message){      
+       // print_r($this->resultInfo);
+        print "*** FAILED ***".$message;
+    }
+}
+
 /**
  * Features context.
  */
@@ -23,7 +31,8 @@ class FeatureContext extends BehatContext
     protected $server;
     protected $uri;
     protected $headers;
-    protected $result;
+    protected $result;#
+    protected $resultHeader;
     protected $resultInfo;
     protected $postFields;
     protected $item;
@@ -143,6 +152,10 @@ class FeatureContext extends BehatContext
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1 );
         curl_setopt($ch, CURLOPT_TIMEOUT, '10');
         curl_setopt($ch, CURLINFO_HEADER_OUT, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_VERBOSE, 1);
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+curl_setopt($ch,CURLOPT_USERAGENT,'Mozilla/5.0 (Windows NT 5.1; rv:17.0) Gecko/20100101 Firefox/17.0 FirePHP/0.7.1');
         if($requestType=="GET"){
         }elseif($requestType=="POST"){
             curl_setopt($ch, CURLOPT_POST,           1 );
@@ -159,7 +172,7 @@ class FeatureContext extends BehatContext
         }
         $headers=array();
         foreach($this->headers as $header=>$value){
-           $headers[]=$header.":".$value; 
+           $headers[]=$header.": ".$value; 
         }                                   
         curl_setopt($ch, CURLOPT_HTTPHEADER,$headers); 
 
@@ -169,7 +182,10 @@ class FeatureContext extends BehatContext
            throw new ErrorException("No Server response in iMakeARequest using $requestType -- you may want to check the test paramters");   
         }
         $this->resultInfo = curl_getinfo($ch);
-       
+        $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        $this->resultHeader = substr($this->result, 0, $header_size);
+        $this->result = substr($this->result, $header_size);
+     // print_r($this->resultInfo ); 
         curl_close($ch);
       
      // print "\nresultInfo=";
@@ -196,7 +212,7 @@ class FeatureContext extends BehatContext
     {
         $codes=explode(",",trim($response));
         if(!in_array($this->resultInfo['http_code'],$codes)){
-            throw new ErrorException("**FAILED** Got response code ".$this->resultInfo['http_code']." when code in $response was expected");
+            throw new failedException("Got response code ".$this->resultInfo['http_code']." when code in $response was expected\nReply Header:\n{$this->resultHeader}\n ");
         }
     }
 
@@ -211,7 +227,7 @@ class FeatureContext extends BehatContext
        // print "\nexpected for ".$this->currentItem." is ".$this->item[$this->currentItem]['content']."<-";
         
         if($this->item[$this->currentItem]['content'] != $this->result){ 
-            throw new ErrorException("**FAILED** The expected content was not recieved.\nContent returned:\n$this->result\nReturned form Url: {$this->uri}\n");
+            throw new failedException("The expected content was not recieved.\nReply Header:\n{$this->resultHeader}\nContent returned:\n$this->result\nReturned from Url: {$this->uri}\n");
            
         }
     }

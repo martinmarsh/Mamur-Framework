@@ -18,6 +18,7 @@ Feature: items_get
 Scenario: Before I can get content I have to post some
   Given I have item "content1"
     And I set HTTP header "X_MAMUR_SERVICE" to "item"
+    And I set HTTP header "x-insight" to "activate"
     And I set api id and api key in HTTP header
     And I set POST content data
    When I make a "POST" request
