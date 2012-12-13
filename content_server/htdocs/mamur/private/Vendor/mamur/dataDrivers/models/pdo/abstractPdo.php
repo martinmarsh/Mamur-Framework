@@ -1,12 +1,17 @@
 <?php
-
-namespace mamur\database\models;
+namespace mamur\dataDrivers\models\pdo;
  
+/*
+ * This class abstracts the basic level logic
+ */
 
 abstract class abstractPdo
 {
 
     protected $db;
+    protected $prep;
+    protected $result;
+    protected $validResult;
     
     /*
      * Create an instance using a connection to a
@@ -20,13 +25,47 @@ abstract class abstractPdo
      * $this->myClassInstance= new myClass(connection::get('contentDb'));
      */
             
-    function __construct($db){ 
+    function __construct($db)
+    { 
         $this->db=$db;
-        print "db posted";
     }
 
-
- 
+    
+      
+    public function getOne($sql,$bindList=NULL)
+    {
+        if ($this->prepBindExec($sql,$bindList)){
+            $this->result = $this->prep->fetchColumn(0);
+        }
+        return $this->resultValid;
+    }
+    
+    public function getAll($sql,$bindList=NULL,$fetch=\PDO::FETCH_ASSOC)
+    {
+        if ($this->prepBindExec($sql,$bindList)){
+            $this->result = $this->prep->fetchAll($fetch);
+        }
+        return $this->resultValid;
+    }
+    
+    public function prepBindExec($sql,$bindList=NULL)
+    {
+        $this->result=FALSE;
+        $this->resultValid=FALSE;
+        $this->prep=$this->db->prepare($sql);
+        foreach($bindList as $place => $bind){
+            if(is_array($bind)){
+                $this->prep->bindValue($place,$bind[0],$bind[1]);
+            } else {
+                $this->prep->bindValue($place,$bind);
+            }
+        }
+        
+        $this->resultValid=$this->prep->execute();
+        return $this->resultValid;
+    }
+    
+ /*
     function  query($sql,$variables="",$prep='default'){
 //returns only one result if multi rows returned returns first value
 
@@ -59,7 +98,7 @@ abstract class abstractPdo
    return $ret;
     }
 
-
+*/
 
 
 }

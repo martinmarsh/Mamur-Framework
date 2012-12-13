@@ -157,13 +157,13 @@ spl_autoload_register('\mamur\autoClassLoad',false);
 
 if (!empty($_SERVER['HTTP_X_MAMUR_SERVICE'])){
 
-    $controller='\\mamur\\services\\controller\\'.trim($_SERVER['HTTP_X_MAMUR_SERVICE']);
+    $controller='\\mamur\\services\\controllers\\'.trim($_SERVER['HTTP_X_MAMUR_SERVICE']);
     $dispatch=new $controller();
 } elseif($config->getRequestItem(0) =='__service' ){
-    $controller='\\mamur\\services\\controller\\'.$config->getRequestItem(1);
+    $controller='\\mamur\\services\\controllers\\'.$config->getRequestItem(1);
     $dispatch=new $controller();
 } else{
-    $dispatch=new \mamur\services\controller\www();
+    $dispatch=new \mamur\services\controllers\www();
 }
 $dispatch->preDispatch();
 

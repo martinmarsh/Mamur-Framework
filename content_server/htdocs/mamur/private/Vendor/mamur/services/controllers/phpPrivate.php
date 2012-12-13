@@ -1,5 +1,5 @@
 <?php
-namespace mamur\services\controller;
+namespace mamur\services\controllers;
 
 class phpPrivate extends abstractController{
     

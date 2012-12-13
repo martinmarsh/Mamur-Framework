@@ -1,5 +1,5 @@
 <?php
-namespace mamur\services\controller;
+namespace mamur\services\controllers;
 
 abstract class abstractController
 {

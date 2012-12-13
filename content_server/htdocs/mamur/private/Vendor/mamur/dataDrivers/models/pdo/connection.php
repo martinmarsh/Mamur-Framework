@@ -1,10 +1,11 @@
 <?php
 
-namespace mamur\database\models;
+namespace mamur\dataDrivers\models\pdo;
 
 /*
  * Connect is a static class to create, store
- * and retrieve database connections using
+ * and retrieve database connections
+ * It is shared by all pdo dataDrivers
  */
 class connection
 {
@@ -14,8 +15,8 @@ class connection
     /*
      * The first get opens a connection and
      * returns the pdo database class.
-     * Use connection::get('databaseNmae') to
-     * get get the open pdo connection instance
+     * Use connection::get('databaseName') to
+     * get and  open pdo connection instance
      */
     static function get($dbName)
     {
