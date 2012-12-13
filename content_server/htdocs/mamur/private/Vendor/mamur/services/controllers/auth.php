@@ -1,7 +1,7 @@
 <?php
-namespace mamur\services\controller;
+namespace mamur\services\controllers;
 
-use mamur\database\models as db;
+use mamur\dataDrivers\models\pdo as db;
 
   //   * $this->myClassInstance= new myClass(connection::get('contentDb'));
    

@@ -11,7 +11,7 @@ Feature: items_get
     And my api secret is "cn4&in2w1$FaP£vS4"
     And I have a test content "/test/content1" I will refer to as "content1"  and which contains
         """
-<p>This  my test item content which may can contain HTML</p>
+<p>This my test item content which may can contain HTML</p>
 <p>Or any other format I choose</p> 
         """ 
 
