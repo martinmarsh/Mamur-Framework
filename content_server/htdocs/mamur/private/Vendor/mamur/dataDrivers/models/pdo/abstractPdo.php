@@ -10,8 +10,8 @@ abstract class abstractPdo
 
     protected $db;
     protected $statement;
-    protected $result;
-    protected $validResult;
+    public $result;
+    public $resultValid;
     
     /*
      * Create an instance using a connection to a
@@ -47,13 +47,28 @@ abstract class abstractPdo
         }
         return $this->resultValid;
     }
+    
+     public function getTypedColumns($sql,$bindList=NULL,$bindResult=NULL)
+    {
+      
+        if ($this->prepBindExec($sql,$bindList,$bindResult)){
+            $this->statement->fetch(\PDO::FETCH_BOUND);
+        }
+        return $this->resultValid;
+    }
    
     
-    public function prepBindExec($sql,$bindList=NULL)
+    public function prepBindExec($sql,$bindList=NULL,$bindResult=NULL)
     {
         $this->result=FALSE;
         $this->resultValid=FALSE;
         $this->statement=$this->db->prepare($sql);
+        if(is_array($bindResult)){
+            $i=1;
+            foreach($bindResult as $col=>$varType){
+                $this->statement->bindColumn($i++,$this->result[$col],$varType);
+            }
+        }
         foreach($bindList as $place => $bind){
             if(is_array($bind)){
                 $this->statement->bindValue($place,$bind[0],$bind[1]);

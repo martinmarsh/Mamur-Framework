@@ -52,7 +52,10 @@ class item extends abstractController
      */
     public function get()
     {
-       print $this->item->getContent($this->fileRef,'new');
+       if($this->item->getContent($this->fileRef,'new')){
+            header("Content-Type: ".$this->item->data->result['type']);
+            print $this->item->data->result['content'];
+       }
     }
     
     /* The delete action removes the contents at fileref

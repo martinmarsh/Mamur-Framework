@@ -98,8 +98,9 @@ public function getItemHistory($ref){
 public function getContent($ref,$status)
 {
     
-    if($this->getAll(
-            "SELECT content FROM `index` as ix,
+    if($this->getTypedColumns(
+            "SELECT content,`type` FROM
+                `index` as ix,
                 indexHistory as ih,
                 indexItemAssoc as ia,
                 item as i
@@ -112,11 +113,15 @@ public function getContent($ref,$status)
             array(
                 ':ref'      => $ref,
                 ':status'   => $status
+            ),
+            array(
+                'content' => \PDO::PARAM_LOB,
+                'type'    => \PDO::PARAM_STR
             ))){
         
         //$this->statement->bindColumn(1, $this->result[0]);
 
-        return $this->result[0]['content'];
+        return $this->resultValid;
     }
     
     return FALSE;
