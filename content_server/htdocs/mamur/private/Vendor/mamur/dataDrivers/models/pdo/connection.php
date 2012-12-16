@@ -28,7 +28,7 @@ class connection
     
     final static private function open($dbName){ 
         //raise exception if open
-               print "name=$dbName";
+              // print "name=$dbName";
         if (isset(self::$dbNames[$dbName])){
             throw new \Exception("Databse '$dbName' is already open");
         }

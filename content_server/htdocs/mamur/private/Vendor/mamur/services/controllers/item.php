@@ -52,7 +52,7 @@ class item extends abstractController
      */
     public function get()
     {
-       print_r($this->item->getContent($this->fileRef,'new'));
+       print $this->item->getContent($this->fileRef,'new');
     }
     
     /* The delete action removes the contents at fileref
