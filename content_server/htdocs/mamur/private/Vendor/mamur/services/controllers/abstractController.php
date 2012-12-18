@@ -43,7 +43,7 @@ abstract class abstractController
         $expectHeaders=array(
             'authKey'   =>'HTTP_X_MAMUR_AUTH_KEY',
             'apiId'     =>'HTTP_X_MAMUR_API_ID',
-            'apiSecret' =>'HTTP_X_MAMUR_API_SECRET',
+            'userId'    =>'HTTP_X_MAMUR_USER_ID',
             'service'   =>'HTTP_X_MAMUR_SERVICE'
         );
 

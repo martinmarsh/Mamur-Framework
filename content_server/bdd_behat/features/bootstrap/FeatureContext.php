@@ -31,7 +31,7 @@ class FeatureContext extends BehatContext
     protected $server;
     protected $uri;
     protected $headers;
-    protected $result;#
+    protected $result;
     protected $resultHeader;
     protected $resultInfo;
     protected $postFields;
@@ -40,6 +40,8 @@ class FeatureContext extends BehatContext
     protected $apiID;
     protected $apiSecret;
     protected $apiKey;
+    protected $authKey;
+    protected $userId;
 
     
     /**
@@ -87,6 +89,24 @@ class FeatureContext extends BehatContext
     {
         $this->apiID=$id;
     }
+    
+    
+    /**
+     * @Given /^my authKey is "([^"]*)"$/
+     */
+    public function myAuthkeyIs($authKey)
+    {
+        $this->authKey=$authKey;
+    }
+
+    /**
+     * @Given /^my userId is "([^"]*)"$/
+     */
+    public function myUseridIs($userId)
+    {
+        $this->userId = $userId;
+    }
+
 
     /**
      * @Given /^my api secret is "([^"]*)"$/
@@ -102,12 +122,18 @@ class FeatureContext extends BehatContext
     public function iSetApiIdAndApiKeyInHttpHeader()
     {
         $this->headers['X_MAMUR_API_ID']=$this->apiID;
-        //$this->headers['X_MAMUR_AUTH_KEY']=$this->apiKey;
-        $this->headers['X_MAMUR_API_SECRET']=$this->apiSecret;
-        $this->headers['X_MAMUR_AUTH_KEY']=$this->apiSecret;
+        $this->headers['X_MAMUR_AUTH_KEY']=$this->authKey;
    
     }
 
+
+    /**
+     * @Given /^I set api id in header$/
+     */
+    public function iSetApiIdInHeader()
+    {
+        $this->headers['X_MAMUR_API_ID']=$this->apiID;
+    }
 
 
     /**

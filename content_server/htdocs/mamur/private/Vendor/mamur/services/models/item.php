@@ -17,7 +17,7 @@ public function __construct(){
    
 } 
     
-public function saveContent($ref,$content,$status='new'){
+public function saveContent($ref,$content,$status='new',$userId,$type){
     //Check if there is the same content
     $hash=sha1($content,true);
     $itemId=$this->data->getItemIdByHash($hash);
@@ -31,7 +31,7 @@ public function saveContent($ref,$content,$status='new'){
     
     //if status is publish or preview you then
     //old value must be changed to 'previous_' $status
-    $this->data->indexItem($ref,$itemId,$status,0,'HTML');
+    $this->data->indexItem($ref,$itemId,$status,$userId,$type);
    
     
     print "\n\n**********> $itemId   ******\n\n";
